@@ -1,0 +1,6 @@
+{
+  "name": "رفيق الطاعة",
+  "description": "تطبيق متكامل لمتابعة العبادات اليومية، الأذكار، قراءة القرآن، رصد العدادات، الإحصائيات الفردية والمجموعات التنافسية لتحفيز الاستمرار الإيماني.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
