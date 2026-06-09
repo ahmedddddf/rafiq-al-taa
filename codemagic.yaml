@@ -12,9 +12,20 @@ workflows:
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) مع رفع محاذاة أزرار التصفح عن أسفل الشاشة
-          cat << 'EOF' > app/src/main/java/com/b_g/a/CustomLibraryAndQuran.kt
-          package com.b_g.a
+          # البحث عن المجلد الحقيقي الذي يحتوي على ملفات المشروع لتفادي مشكلة المجلدات المكررة
+          if [ -d "رفيق-الطاعة" ]; then
+              cd "رفيق-الطاعة"
+          elif [ -d "رفيق-الطاعة (1)" ]; then
+              cd "رفيق-الطاعة (1)"
+          fi
+          
+          # تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً ديناميكياً
+          MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
+          MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
+          
+          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) في المسار الصحيح
+          cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
+          package com.example.ui
 
           import android.net.Uri
           import androidx.activity.compose.rememberLauncherForActivityResult
@@ -135,9 +146,9 @@ workflows:
           }
           EOF
 
-          # 2. إنشاء ملف التذكير والعبارات كل دقيقة
-          cat << 'EOF' > app/src/main/java/com/b_g/a/ReminderBroadcastReceiver.kt
-          package com.b_g.a
+          # 2. إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
+          cat << 'EOF' > "$MAIN_DIR/ReminderBroadcastReceiver.kt"
+          package com.example.ui
 
           import android.app.NotificationChannel
           import android.app.NotificationManager
@@ -150,11 +161,11 @@ workflows:
           class ReminderBroadcastReceiver : BroadcastReceiver() {
               override fun onReceive(context: Context, intent: Intent) {
                   val reminders = listOf(
-                      "🔴 سبحان الله وبحمده، سبحان الله العظيم.",
-                      "🔴 صلِّ على محمد ونل شفاعته يوم القيامة.",
-                      "🔴 لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
-                      "🔴 أستغفر الله العظيم وأتوب إليه.",
-                      "🔴 لا إله إلا أنت سبحانك إني كنت من الظالمين."
+                      "🔴 رفيق الطاعة: سبحان الله وبحمده، سبحان الله العظيم.",
+                      "🔴 رفيق الطاعة: صلِّ على محمد ونل شفاعته يوم القيامة.",
+                      "🔴 رفيق الطاعة: لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
+                      "🔴 رفيق الطاعة: أستغفر الله العظيم وأتوب إليه.",
+                      "🔴 رفيق الطاعة: لا إله إلا أنت سبحانك إني كنت من الظالمين."
                   )
                   val randomReminder = reminders.random()
 
@@ -180,20 +191,11 @@ workflows:
           EOF
 
           # 3. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
+          MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
           sed -i '' '/<\/application>/i \
-          <receiver android:name=".ReminderBroadcastReceiver" android:exported="false" />' app/src/main/AndroidManifest.xml
+          <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 4. تعديل كود الـ MainActivity.kt لحقن وتشغيل نظام الإشعارات ديناميكياً عند تشغيل التطبيق
-          sed -i '' '/super.onCreate/a \
-          val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager \
-          val intent = Intent(this, ReminderBroadcastReceiver::class.java) \
-          val pendingIntent = android.app.PendingIntent.getBroadcast(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE) \
-          alarmManager.setRepeating(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 60000, pendingIntent)' app/src/main/java/com/b_g/a/MainActivity.kt
-
-          # 5. بناء المشروع واستخراج الـ APK المحدث
-          gradle wrapper --gradle-version 9.3.1
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          
+          # 4. توليد الـ wrapper والبدء في بناء الـ APK
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
