@@ -9,21 +9,21 @@ workflows:
     scripts:
       - name: Extract, Inject Complete Features and Build
         script: |
+          # فك الضغط في مجلد مستقل
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # البحث عن المجلد الحقيقي الذي يحتوي على ملفات المشروع لتفادي مشكلة المجلدات المكررة
-          if [ -d "رفيق-الطاعة" ]; then
-              cd "رفيق-الطاعة"
-          elif [ -d "رفيق-الطاعة (1)" ]; then
-              cd "رفيق-الطاعة (1)"
+          # الدخول تلقائياً لأي مجلد داخلي يحتوي على ملفات أندرويد الأساسية
+          GRADLEW_PATH=$(find . -name "gradlew" | head -n 1)
+          if [ -n "$GRADLEW_PATH" ]; then
+              cd "$(dirname "$GRADLEW_PATH")"
           fi
           
-          # تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً ديناميكياً
+          # تحديد مسار ملف الـ MainActivity الحقيقي ديناميكياً
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
           
-          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) في المسار الصحيح
+          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت)
           cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
           package com.example.ui
 
@@ -195,7 +195,7 @@ workflows:
           sed -i '' '/<\/application>/i \
           <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 4. توليد الـ wrapper والبدء في بناء الـ APK
+          # 4. تشغيل البناء مباشرة
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
