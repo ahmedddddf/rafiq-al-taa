@@ -10,7 +10,8 @@ workflows:
       - name: Build and Assemble APK
         script: |
           unzip -o "rafiq.zip" -d .
-          cd rafiq
+          # الدخول للمجلد الداخلي rafiq حيث توجد ملفات الأندرويد الحقيقية
+          cd rafiq/rafiq
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
