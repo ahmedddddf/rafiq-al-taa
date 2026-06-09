@@ -12,10 +12,9 @@ workflows:
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # توليد ملف gradlew الناقص برمجياً ليناسب إصدار تطبيقك
-          gradle wrapper --gradle-version 8.10
+          # توليد ملف الـ wrapper بالإصدار المطلوبة لتطبيقك بالضبط
+          gradle wrapper --gradle-version 9.3.1
           
-          # إعطاء الصلاحيات وبدء البناء
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
