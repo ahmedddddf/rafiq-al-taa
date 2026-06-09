@@ -7,12 +7,12 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Extract, Inject Code and Build
+      - name: Extract, Inject Features and Build
         script: |
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف بدون صوت) بالباكج الصحيح لتطبيقك
+          # 1. إنشاء ملف الشاشات والمكتبة والمصحف وضبط الـ Padding للشريط السفلي
           cat << 'EOF' > app/src/main/java/com/b_g/a/CustomLibraryAndQuran.kt
           package com.b_g.a
 
@@ -65,6 +65,7 @@ workflows:
               }
 
               Scaffold(
+                  modifier = Modifier.navigationBarsPadding(), // يرفع المحاذاة فوق أزرار الجوال السفلية تماماً
                   floatingActionButton = {
                       FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
                           Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
@@ -105,7 +106,7 @@ workflows:
               val quranSurahs = listOf("الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف")
               var selectedSurah by remember { mutableStateOf<String?>(null) }
               if (selectedSurah == null) {
-                  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
                       Row(verticalAlignment = Alignment.CenterVertically) {
                           Button(onClick = onBack) { Text("رجوع") }
                           Spacer(modifier = Modifier.width(16.dp))
@@ -121,7 +122,7 @@ workflows:
                       }
                   }
               } else {
-                  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
                       Button(onClick = { selectedSurah = null }) { Text("عودة للسور") }
                       Spacer(modifier = Modifier.height(16.dp))
                       Text(text = "سورة ${selectedSurah}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -134,11 +135,57 @@ workflows:
           }
           EOF
 
-          # 2. توليد ملف الـ wrapper بالإصدار المطلوبة وتجهيز التوقيع الافتراضي
+          # 2. إنشاء نظام الإشعارات التذكيرية كل دقيقة بحقن مستقبل الإشعارات الافتراضي
+          cat << 'EOF' > app/src/main/java/com/b_g/a/ReminderBroadcastReceiver.kt
+          package com.b_g.a
+
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.content.BroadcastReceiver
+          import android.content.Context
+          import android.content.Intent
+          import android.os.Build
+          import androidx.core.app.NotificationCompat
+
+          class ReminderBroadcastReceiver : BroadcastReceiver() {
+              override fun onReceive(context: Context, intent: Intent) {
+                  val reminders = listOf(
+                      "🔴 رفيق الطاعة: سبحان الله وبحمده، سبحان الله العظيم.",
+                      "🔴 رفيق الطاعة: صلِّ على محمد ونل شفاعته يوم القيامة.",
+                      "🔴 رفيق الطاعة: لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
+                      "🔴 رفيق الطاعة: أستغفر الله العظيم وأتوب إليه.",
+                      "🔴 رفيق الطاعة: لا إله إلا أنت سبحانك إني كنت من الظالمين."
+                  )
+                  val randomReminder = reminders.random()
+
+                  val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                  val channelId = "taaa_reminders_channel"
+
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      val channel = NotificationChannel(channelId, "تذكيرات رفيق الطاعة", NotificationManager.IMPORTANCE_DEFAULT)
+                      notificationManager.createNotificationChannel(channel)
+                  }
+
+                  val notification = NotificationCompat.Builder(context, channelId)
+                      .setContentTitle("تذكير برفق الطاعة")
+                      .setContentText(randomReminder)
+                      .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                      .setAutoCancel(true)
+                      .build()
+
+                  notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+              }
+          }
+          EOF
+
+          # 3. تحديث ملف الـ Manifest لإضافة الـ Receiver لكي يقرأ الأندرويد الإشعار
+          sed -i '' '/<\/application>/i \
+          <receiver android:name=".ReminderBroadcastReceiver" android:exported="false" />' app/src/main/AndroidManifest.xml
+
+          # 4. توليد الـ wrapper وإصدار الـ Keystore الافتراضي وبدء البناء
           gradle wrapper --gradle-version 9.3.1
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           
-          # 3. بناء المشروع واستخراج الـ APK المطور
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
