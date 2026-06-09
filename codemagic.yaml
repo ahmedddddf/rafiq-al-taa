@@ -12,8 +12,11 @@ workflows:
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # توليد ملف الـ wrapper بالإصدار المطلوبة لتطبيقك بالضبط
+          # توليد ملف الـ wrapper بالإصدار المطلوبة
           gradle wrapper --gradle-version 9.3.1
+          
+          # توليد ملف keystore افتراضي في المسار المطلوب لتخطي خطأ التوقيع
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           
           chmod +x gradlew
           ./gradlew assembleDebug
