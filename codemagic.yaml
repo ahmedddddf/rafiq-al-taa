@@ -7,11 +7,22 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Build and Assemble APK
+      - name: Auto-Detect Project Root and Build APK
         script: |
-          unzip -o "rafiq.zip" -d .
-          # الدخول للمجلد الداخلي rafiq حيث توجد ملفات الأندرويد الحقيقية
-          cd rafiq/rafiq
+          # 1. فك ضغط ملف المشروع
+          unzip -o "rafiq.zip" -d extracted_project
+          cd extracted_project
+          
+          # 2. البحث التلقائي والديناميكي عن مجلد المشروع الحقيقي الذي يحتوي على gradlew
+          GRADLEW_PATH=$(find . -name "gradlew" | head -n 1)
+          if [ -n "$GRADLEW_PATH" ]; then
+              cd "$(dirname "$GRADLEW_PATH")"
+              echo "تم العثور على مسار المشروع بنجاح: $(pwd)"
+          else
+              echo "تنبيه: لم يتم العثور على ملف gradlew، سيتم المحاولة في المجلد الحالي."
+          fi
+          
+          # 3. منح الصلاحيات وتشغيل بناء الـ APK مباشرة
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
