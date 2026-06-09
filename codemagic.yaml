@@ -9,17 +9,20 @@ workflows:
     scripts:
       - name: Extract, Inject Complete Features and Build
         script: |
-          # فك الضغط في مجلد مستقل
+          # فك ضغط أي ملف زيب موجود مهما كان اسمه
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # الدخول تلقائياً لأي مجلد داخلي يحتوي على ملفات أندرويد الأساسية
-          GRADLEW_PATH=$(find . -name "gradlew" | head -n 1)
-          if [ -n "$GRADLEW_PATH" ]; then
-              cd "$(dirname "$GRADLEW_PATH")"
+          # الدخول تلقائياً إلى المجلد الذي يحتوي على مجلد app الحقيقي
+          APP_DIR=$(find . -name "app" -type d | head -n 1)
+          if [ -n "$APP_DIR" ]; then
+              cd "$(dirname "$APP_DIR")"
           fi
           
-          # تحديد مسار ملف الـ MainActivity الحقيقي ديناميكياً
+          # توليد ملفات الـ Gradle Wrapper من الصفر داخل السيرفر لضمان عدم حدوث خطأ
+          gradle wrapper --gradle-version 8.7
+          
+          # تحديد مسار ملف الـ MainActivity الحقيقي ديناميكياً وحقن الميزات
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
           
@@ -195,7 +198,7 @@ workflows:
           sed -i '' '/<\/application>/i \
           <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 4. تشغيل البناء مباشرة
+          # 4. منح الصلاحيات وتشغيل البناء
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
