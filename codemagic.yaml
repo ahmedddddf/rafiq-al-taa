@@ -21,16 +21,16 @@ workflows:
               fi
           done
           
-          # الدخول للمجلد الجديد
+          # 2. الدخول للمجلد الجديد
           if [ -d "project_root" ]; then
               cd project_root
           fi
           
-          # 2. تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً وحقن الأكواد والعبارات
+          # تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً وحقن الأكواد والعبارات
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
           
-          # إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت)
+          # 3. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) - جعل دالة التنقل اختيارية لمنع خطأ البناء
           cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
           package com.example.ui
 
@@ -54,68 +54,77 @@ workflows:
           import java.io.FileOutputStream
 
           @Composable
-          fun EnhancedLibraryScreen(onNavigateToQuran: () -> Unit) {
+          fun EnhancedLibraryScreen(onNavigateToQuran: () -> Unit = {}) {
               val context = LocalContext.current
               var booksList by remember { mutableStateOf(listOf<File>()) }
+              var showQuranScreen by remember { mutableStateOf(false) }
 
-              fun refreshBooks() {
-                  val folder = File(context.filesDir, "my_custom_books")
-                  if (folder.exists()) {
-                      booksList = folder.listFiles()?.filter { it.extension == "pdf" }?.toList() ?: emptyList()
+              if (showQuranScreen) {
+                  CleanQuranReaderScreen(onBack = { showQuranScreen = false })
+              } else {
+                  refreshBooksInternal(context) { files ->
+                      booksList = files
                   }
-              }
 
-              LaunchedEffect(Unit) { refreshBooks() }
-
-              val filePickerLauncher = rememberLauncherForActivityResult(
-                  contract = ActivityResultContracts.GetContent()
-              ) { uri: Uri? ->
-                  uri?.let { selectedUri ->
-                      val folder = File(context.filesDir, "my_custom_books")
-                      if (!folder.exists()) folder.mkdirs()
-                      val fileName = "كتاب_${System.currentTimeMillis()}.pdf"
-                      val destFile = File(folder, fileName)
-                      context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
-                          FileOutputStream(destFile).use { outputStream -> inputStream.copyTo(outputStream) }
-                      }
-                      refreshBooks()
-                  }
-              }
-
-              Scaffold(
-                  modifier = Modifier.navigationBarsPadding(),
-                  floatingActionButton = {
-                      FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
-                          Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
-                      }
-                  }
-              ) { paddingValues ->
-                  Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-                      Card(
-                          modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { onNavigateToQuran() },
-                          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                      ) {
-                          Text(text = "📖 تصفح المصحف الشريف (للقراءة فقط - بدون صوت)", modifier = Modifier.padding(16.dp).fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 16.sp)
-                      }
-                      Text(text = "كتبك المضافة ديناميكياً:", style = MaterialTheme.typography.titleMedium)
-                      Spacer(modifier = Modifier.height(8.dp))
-                      if (booksList.isEmpty()) {
-                          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                              Text(text = "المكتبة فارغة حالياً.\nاضغط على الزر بالأسفل لإضافة أي كتاب يعجبك مباشرة.", textAlign = TextAlign.Center)
+                  val filePickerLauncher = rememberLauncherForActivityResult(
+                      contract = ActivityResultContracts.GetContent()
+                  ) { uri: Uri? ->
+                      uri?.let { selectedUri ->
+                          val folder = File(context.filesDir, "my_custom_books")
+                          if (!folder.exists()) folder.mkdirs()
+                          val fileName = "كتاب_${System.currentTimeMillis()}.pdf"
+                          val destFile = File(folder, fileName)
+                          context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
+                              FileOutputStream(destFile).use { outputStream -> inputStream.copyTo(outputStream) }
                           }
-                      } else {
-                          LazyColumn {
-                              items(booksList) { file ->
-                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                      Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                          Text(text = file.nameWithoutExtension, modifier = Modifier.weight(1f))
-                                          Button(onClick = { /* فتح قراءة */ }) { Text("قراءة") }
+                          refreshBooksInternal(context) { files -> booksList = files }
+                      }
+                  }
+
+                  Scaffold(
+                      modifier = Modifier.navigationBarsPadding(),
+                      floatingActionButton = {
+                          FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
+                              Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
+                          }
+                      }
+                  ) { paddingValues ->
+                      Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+                          Card(
+                              modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { showQuranScreen = true },
+                              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                          ) {
+                              Text(text = "📖 تصفح المصحف الشريف (للقراءة فقط - بدون صوت)", modifier = Modifier.padding(16.dp).fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 16.sp)
+                          }
+                          Text(text = "كتبك المضافة ديناميكياً:", style = MaterialTheme.typography.titleMedium)
+                          Spacer(modifier = Modifier.height(8.dp))
+                          if (booksList.isEmpty()) {
+                              Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                  Text(text = "المكتبة فارغة حالياً.\nاضغط على الزر بالأسفل لإضافة أي كتاب يعجبك مباشرة.", textAlign = TextAlign.Center)
+                              }
+                          } else {
+                              LazyColumn {
+                                  items(booksList) { file ->
+                                      Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                          Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                              Text(text = file.nameWithoutExtension, modifier = Modifier.weight(1f))
+                                              Button(onClick = { /* فتح قراءة */ }) { Text("قراءة") }
+                                          }
                                       }
                                   }
                               }
                           }
                       }
                   }
+              }
+          }
+
+          fun refreshBooksInternal(context: android.content.Context, onResult: (List<File>) -> Unit) {
+              val folder = File(context.filesDir, "my_custom_books")
+              if (folder.exists()) {
+                  onResult(folder.listFiles()?.filter { it.extension == "pdf" }?.toList() ?: emptyList())
+              } else {
+                  onResult(emptyList())
               }
           }
 
@@ -153,7 +162,7 @@ workflows:
           }
           EOF
 
-          # إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
+          # 4. إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
           cat << 'EOF' > "$MAIN_DIR/ReminderBroadcastReceiver.kt"
           package com.example.ui
 
@@ -197,12 +206,12 @@ workflows:
           }
           EOF
 
-          # تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
+          # 5. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
           MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
           sed -i '' '/<\/application>/i \
           <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 3. بناء المشروع واستخراج الـ APK المحدث
+          # 6. بناء المشروع واستخراج الـ APK المحدث
           gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
