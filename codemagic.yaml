@@ -7,12 +7,12 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Extract, Inject Features and Build
+      - name: Extract, Inject Complete Features and Build
         script: |
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # 1. إنشاء ملف الشاشات والمكتبة والمصحف وضبط الـ Padding للشريط السفلي
+          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) مع رفع محاذاة أزرار التصفح عن أسفل الشاشة
           cat << 'EOF' > app/src/main/java/com/b_g/a/CustomLibraryAndQuran.kt
           package com.b_g.a
 
@@ -65,7 +65,7 @@ workflows:
               }
 
               Scaffold(
-                  modifier = Modifier.navigationBarsPadding(), // يرفع المحاذاة فوق أزرار الجوال السفلية تماماً
+                  modifier = Modifier.navigationBarsPadding(),
                   floatingActionButton = {
                       FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
                           Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
@@ -135,7 +135,7 @@ workflows:
           }
           EOF
 
-          # 2. إنشاء نظام الإشعارات التذكيرية كل دقيقة بحقن مستقبل الإشعارات الافتراضي
+          # 2. إنشاء ملف التذكير والعبارات كل دقيقة
           cat << 'EOF' > app/src/main/java/com/b_g/a/ReminderBroadcastReceiver.kt
           package com.b_g.a
 
@@ -150,11 +150,11 @@ workflows:
           class ReminderBroadcastReceiver : BroadcastReceiver() {
               override fun onReceive(context: Context, intent: Intent) {
                   val reminders = listOf(
-                      "🔴 رفيق الطاعة: سبحان الله وبحمده، سبحان الله العظيم.",
-                      "🔴 رفيق الطاعة: صلِّ على محمد ونل شفاعته يوم القيامة.",
-                      "🔴 رفيق الطاعة: لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
-                      "🔴 رفيق الطاعة: أستغفر الله العظيم وأتوب إليه.",
-                      "🔴 رفيق الطاعة: لا إله إلا أنت سبحانك إني كنت من الظالمين."
+                      "🔴 سبحان الله وبحمده، سبحان الله العظيم.",
+                      "🔴 صلِّ على محمد ونل شفاعته يوم القيامة.",
+                      "🔴 لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
+                      "🔴 أستغفر الله العظيم وأتوب إليه.",
+                      "🔴 لا إله إلا أنت سبحانك إني كنت من الظالمين."
                   )
                   val randomReminder = reminders.random()
 
@@ -162,14 +162,15 @@ workflows:
                   val channelId = "taaa_reminders_channel"
 
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                      val channel = NotificationChannel(channelId, "تذكيرات رفيق الطاعة", NotificationManager.IMPORTANCE_DEFAULT)
+                      val channel = NotificationChannel(channelId, "تذكيرات رفيق الطاعة", NotificationManager.IMPORTANCE_HIGH)
                       notificationManager.createNotificationChannel(channel)
                   }
 
                   val notification = NotificationCompat.Builder(context, channelId)
-                      .setContentTitle("تذكير برفق الطاعة")
+                      .setContentTitle("تذكير رفيق الطاعة")
                       .setContentText(randomReminder)
                       .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                      .setPriority(NotificationCompat.PRIORITY_HIGH)
                       .setAutoCancel(true)
                       .build()
 
@@ -178,11 +179,18 @@ workflows:
           }
           EOF
 
-          # 3. تحديث ملف الـ Manifest لإضافة الـ Receiver لكي يقرأ الأندرويد الإشعار
+          # 3. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
           sed -i '' '/<\/application>/i \
           <receiver android:name=".ReminderBroadcastReceiver" android:exported="false" />' app/src/main/AndroidManifest.xml
 
-          # 4. توليد الـ wrapper وإصدار الـ Keystore الافتراضي وبدء البناء
+          # 4. تعديل كود الـ MainActivity.kt لحقن وتشغيل نظام الإشعارات ديناميكياً عند تشغيل التطبيق
+          sed -i '' '/super.onCreate/a \
+          val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager \
+          val intent = Intent(this, ReminderBroadcastReceiver::class.java) \
+          val pendingIntent = android.app.PendingIntent.getBroadcast(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE) \
+          alarmManager.setRepeating(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 60000, pendingIntent)' app/src/main/java/com/b_g/a/MainActivity.kt
+
+          # 5. بناء المشروع واستخراج الـ APK المحدث
           gradle wrapper --gradle-version 9.3.1
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           
