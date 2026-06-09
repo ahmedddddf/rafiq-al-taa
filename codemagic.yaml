@@ -9,24 +9,28 @@ workflows:
     scripts:
       - name: Extract, Inject Complete Features and Build
         script: |
-          # فك ضغط أي ملف زيب موجود مهما كان اسمه
+          # 1. فك ضغط ملف الزيب وتغيير أسماء المجلدات العربية فوراً
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # الدخول تلقائياً إلى المجلد الذي يحتوي على مجلد app الحقيقي
-          APP_DIR=$(find . -name "app" -type d | head -n 1)
-          if [ -n "$APP_DIR" ]; then
-              cd "$(dirname "$APP_DIR")"
+          # تحويل أي اسم مجلد داخلي غير معروف (عربي) إلى اسم ثابت "project_root"
+          for d in *; do
+              if [ -d "$d" ]; then
+                  mv "$d" project_root 2>/dev/null || true
+                  break
+              fi
+          done
+          
+          # الدخول للمجلد الجديد
+          if [ -d "project_root" ]; then
+              cd project_root
           fi
           
-          # توليد ملفات الـ Gradle Wrapper من الصفر داخل السيرفر لضمان عدم حدوث خطأ
-          gradle wrapper --gradle-version 8.7
-          
-          # تحديد مسار ملف الـ MainActivity الحقيقي ديناميكياً وحقن الميزات
+          # 2. تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً وحقن الأكواد والعبارات
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
           
-          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت)
+          # إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت)
           cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
           package com.example.ui
 
@@ -118,8 +122,8 @@ workflows:
           @Composable
           fun CleanQuranReaderScreen(onBack: () -> Unit) {
               val quranSurahs = listOf("الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف")
-              var selectedSurah by remember { mutableStateOf<String?>(null) }
-              if (selectedSurah == null) {
+              var selectedSurval by remember { mutableStateOf<String?>(null) }
+              if (selectedSurval == null) {
                   Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
                       Row(verticalAlignment = Alignment.CenterVertically) {
                           Button(onClick = onBack) { Text("رجوع") }
@@ -129,7 +133,7 @@ workflows:
                       Spacer(modifier = Modifier.height(16.dp))
                       LazyColumn {
                           itemsIndexed(quranSurahs) { index, surah ->
-                              Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedSurah = surah }) {
+                              Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedSurval = surah }) {
                                   Text(text = "سورة ${surah}", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
                               }
                           }
@@ -137,9 +141,9 @@ workflows:
                   }
               } else {
                   Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
-                      Button(onClick = { selectedSurah = null }) { Text("عودة للسور") }
+                      Button(onClick = { selectedSurval = null }) { Text("عودة للسور") }
                       Spacer(modifier = Modifier.height(16.dp))
-                      Text(text = "سورة ${selectedSurah}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                      Text(text = "سورة ${selectedSurval}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                       Spacer(modifier = Modifier.height(16.dp))
                       Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                           Text(text = "نص السورة الكامل للقراءة الهادئة يظهر هنا بوضوح وبدون تشغيل أي ملفات صوتية...", fontSize = 18.sp, textAlign = TextAlign.Center)
@@ -149,7 +153,7 @@ workflows:
           }
           EOF
 
-          # 2. إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
+          # إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
           cat << 'EOF' > "$MAIN_DIR/ReminderBroadcastReceiver.kt"
           package com.example.ui
 
@@ -193,12 +197,13 @@ workflows:
           }
           EOF
 
-          # 3. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
+          # تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
           MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
           sed -i '' '/<\/application>/i \
           <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 4. منح الصلاحيات وتشغيل البناء
+          # 3. بناء المشروع واستخراج الـ APK المحدث
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
