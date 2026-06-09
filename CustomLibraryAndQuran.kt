@@ -1,0 +1,169 @@
+package com.example // تأكد أن هذا السطر يطابق الباكج الخاص بتطبيقك
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.io.File
+import java.io.FileOutputStream
+
+// 1. شاشة المكتبة المحدثة لإضافة الكتب (PDF)
+@Composable
+fun EnhancedLibraryScreen(onNavigateToQuran: () -> Unit) {
+    val context = LocalContext.current
+    var booksList by remember { mutableStateOf(listOf<File>()) }
+
+    fun refreshBooks() {
+        val folder = File(context.filesDir, "my_custom_books")
+        if (folder.exists()) {
+            booksList = folder.listFiles()?.filter { it.extension == "pdf" }?.toList() ?: emptyList()
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshBooks() }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            val folder = File(context.filesDir, "my_custom_books")
+            if (!folder.exists()) folder.mkdirs()
+            
+            // محاولة جلب الاسم الأصلي أو تسميته تلقائياً
+            val fileName = "كتاب_${System.currentTimeMillis()}.pdf"
+            val destFile = File(folder, fileName)
+            
+            context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
+                FileOutputStream(destFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            refreshBooks()
+        }
+    }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { filePickerLauncher.launch("application/pdf") },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onPrimary)
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            // زر علوي للدخول إلى المصحف الجديد للقراءة فقط
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .clickable { onNavigateToQuran() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Text(
+                    text = "📖 تصفح المصحف الشريف (للقراءة فقط - بدون صوت)",
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 16.sp
+                )
+            }
+
+            Text(text = "كتبك المضافة ديناميكياً:", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (booksList.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "المكتبة فارغة حالياً.\nاضغط على الزر بالأسفل لإضافة أي كتاب يعجبك مباشرة من جوالك.", textAlign = TextAlign.Center)
+                }
+            } else {
+                LazyColumn {
+                    items(booksList) { file ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = file.nameWithoutExtension, modifier = Modifier.weight(1f))
+                                Button(onClick = { /* هنا يتم فتح قارئ الـ PDF الداخلي أو الخارجي */ }) {
+                                    Text("قراءة")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 2. شاشة المصحف الكامل للقراءة فقط (عرض الأجزاء والسور نصياً)
+@Composable
+fun CleanQuranReaderScreen(onBack: () -> Unit) {
+    // قائمة تجريبية بأسماء السور كمثال، ويمكن توسيعها لتقرأ من ملف نصي كامل لاحقاً
+    val quranSurahs = listOf(
+        "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف"
+    )
+    var selectedSurah by remember { mutableStateOf<String?>(null) }
+
+    if (selectedSurah == null) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = onBack) { Text("رجوع") }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("المصحف الشريف للقراءة", fontSize = 20.sp)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyColumn {
+                itemsIndexed(quranSurahs) { index, surah ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { selectedSurah = surah }
+                    ) {
+                        Text(text = "سورة ${surah}", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+                    }
+                }
+            }
+        }
+    } else {
+        // واجهة عرض نصوص السورة المحددة للقراءة بدون أي صوت تلقائي
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Button(onClick = { selectedSurah = null }) { Text("عودة للسور") }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "سورة ${selectedSurah}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "نص السورة الكامل للقراءة الهادئة يظهر هنا بوضوح وبدون تشغيل أي ملفات صوتية...",
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+}
