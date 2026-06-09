@@ -1,0 +1,22 @@
+workflows:
+  android-workflow:
+    name: Android APK Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        JAVA_VERSION: "17"
+    scripts:
+      - name: Extract and Generate Wrapper
+        script: |
+          unzip -o "*.zip" -d extracted_project
+          cd extracted_project
+          
+          # توليد ملف gradlew الناقص برمجياً ليناسب إصدار تطبيقك
+          gradle wrapper --gradle-version 8.10
+          
+          # إعطاء الصلاحيات وبدء البناء
+          chmod +x gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - "**/build/outputs/apk/**/*.apk"
