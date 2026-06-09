@@ -7,17 +7,138 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Extract and Generate Wrapper
+      - name: Extract, Inject Code and Build
         script: |
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # توليد ملف الـ wrapper بالإصدار المطلوبة
+          # 1. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف بدون صوت) بالباكج الصحيح لتطبيقك
+          cat << 'EOF' > app/src/main/java/com/b_g/a/CustomLibraryAndQuran.kt
+          package com.b_g.a
+
+          import android.net.Uri
+          import androidx.activity.compose.rememberLauncherForActivityResult
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.lazy.itemsIndexed
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.text.style.TextAlign
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+          import java.io.File
+          import java.io.FileOutputStream
+
+          @Composable
+          fun EnhancedLibraryScreen(onNavigateToQuran: () -> Unit) {
+              val context = LocalContext.current
+              var booksList by remember { mutableStateOf(listOf<File>()) }
+
+              fun refreshBooks() {
+                  val folder = File(context.filesDir, "my_custom_books")
+                  if (folder.exists()) {
+                      booksList = folder.listFiles()?.filter { it.extension == "pdf" }?.toList() ?: emptyList()
+                  }
+              }
+
+              LaunchedEffect(Unit) { refreshBooks() }
+
+              val filePickerLauncher = rememberLauncherForActivityResult(
+                  contract = ActivityResultContracts.GetContent()
+              ) { uri: Uri? ->
+                  uri?.let { selectedUri ->
+                      val folder = File(context.filesDir, "my_custom_books")
+                      if (!folder.exists()) folder.mkdirs()
+                      val fileName = "كتاب_${System.currentTimeMillis()}.pdf"
+                      val destFile = File(folder, fileName)
+                      context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
+                          FileOutputStream(destFile).use { outputStream -> inputStream.copyTo(outputStream) }
+                      }
+                      refreshBooks()
+                  }
+              }
+
+              Scaffold(
+                  floatingActionButton = {
+                      FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
+                          Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
+                      }
+                  }
+              ) { paddingValues ->
+                  Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+                      Card(
+                          modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { onNavigateToQuran() },
+                          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                      ) {
+                          Text(text = "📖 تصفح المصحف الشريف (للقراءة فقط - بدون صوت)", modifier = Modifier.padding(16.dp).fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 16.sp)
+                      }
+                      Text(text = "كتبك المضافة ديناميكياً:", style = MaterialTheme.typography.titleMedium)
+                      Spacer(modifier = Modifier.height(8.dp))
+                      if (booksList.isEmpty()) {
+                          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                              Text(text = "المكتبة فارغة حالياً.\nاضغط على الزر بالأسفل لإضافة أي كتاب يعجبك مباشرة.", textAlign = TextAlign.Center)
+                          }
+                      } else {
+                          LazyColumn {
+                              items(booksList) { file ->
+                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                      Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                          Text(text = file.nameWithoutExtension, modifier = Modifier.weight(1f))
+                                          Button(onClick = { /* فتح قراءة */ }) { Text("قراءة") }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun CleanQuranReaderScreen(onBack: () -> Unit) {
+              val quranSurahs = listOf("الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف")
+              var selectedSurah by remember { mutableStateOf<String?>(null) }
+              if (selectedSurah == null) {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                          Button(onClick = onBack) { Text("رجوع") }
+                          Spacer(modifier = Modifier.width(16.dp))
+                          Text("المصحف الشريف للقراءة", fontSize = 20.sp)
+                      }
+                      Spacer(modifier = Modifier.height(16.dp))
+                      LazyColumn {
+                          itemsIndexed(quranSurahs) { index, surah ->
+                              Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedSurah = surah }) {
+                                  Text(text = "سورة ${surah}", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+                              }
+                          }
+                      }
+                  }
+              } else {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                      Button(onClick = { selectedSurah = null }) { Text("عودة للسور") }
+                      Spacer(modifier = Modifier.height(16.dp))
+                      Text(text = "سورة ${selectedSurah}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                      Spacer(modifier = Modifier.height(16.dp))
+                      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                          Text(text = "نص السورة الكامل للقراءة الهادئة يظهر هنا بوضوح وبدون تشغيل أي ملفات صوتية...", fontSize = 18.sp, textAlign = TextAlign.Center)
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # 2. توليد ملف الـ wrapper بالإصدار المطلوبة وتجهيز التوقيع الافتراضي
           gradle wrapper --gradle-version 9.3.1
-          
-          # توليد ملف keystore افتراضي في المسار المطلوب لتخطي خطأ التوقيع
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           
+          # 3. بناء المشروع واستخراج الـ APK المطور
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
