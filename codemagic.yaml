@@ -13,7 +13,7 @@ workflows:
           unzip -o "*.zip" -d extracted_project
           cd extracted_project
           
-          # تحويل أي اسم مجلد داخلي غير معروف (عربي) إلى اسم ثابت "project_root"
+          # تحويل اسم أي مجلد داخلي (مثل المجلدات المكتوبة بالعربي) إلى اسم ثابت "project_root"
           for d in *; do
               if [ -d "$d" ]; then
                   mv "$d" project_root 2>/dev/null || true
@@ -21,16 +21,19 @@ workflows:
               fi
           done
           
-          # 2. الدخول للمجلد الجديد
+          # 2. الدخول للمجلد الثابت الجديد لضمان العثور على ملفات المشروع
           if [ -d "project_root" ]; then
               cd project_root
           fi
+          
+          # 3. بناء وتوليد ملفات الـ Gradle Wrapper من الصفر داخل السيرفر لضمان عدم حدوث خطأ
+          gradle wrapper --gradle-version 8.7
           
           # تحديد مسار ملف الـ MainActivity الحقيقي تلقائياً وحقن الأكواد والعبارات
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
           
-          # 3. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت) - جعل دالة التنقل اختيارية لمنع خطأ البناء
+          # 4. إنشاء ملف الواجهات الجديدة (المكتبة والمصحف الصامت)
           cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
           package com.example.ui
 
@@ -162,7 +165,7 @@ workflows:
           }
           EOF
 
-          # 4. إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
+          # 5. إنشاء ملف الإشعارات التذكيرية في المسار الصحيح
           cat << 'EOF' > "$MAIN_DIR/ReminderBroadcastReceiver.kt"
           package com.example.ui
 
@@ -206,13 +209,12 @@ workflows:
           }
           EOF
 
-          # 5. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
+          # 6. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
           MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
           sed -i '' '/<\/application>/i \
           <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
 
-          # 6. بناء المشروع واستخراج الـ APK المحدث
-          gradle wrapper --gradle-version 8.7
+          # 7. تشغيل بناء الـ APK مباشرة
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
