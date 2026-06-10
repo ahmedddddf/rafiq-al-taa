@@ -7,23 +7,27 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Extract Project and Install Build Tools
+      - name: Extract Project, Install Gradle and Build
         script: |
-          # 1. فك ضغط ملف المشروع المستلم من الجوال
+          # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
           cd extracted_project
           
-          # 2. الدخول التلقائي للمجلد الداخلي للمشروع
+          # 2. الدخول للمجلد الداخلي للمشروع
           if [ -d "rafiq" ]; then
               cd rafiq
           fi
           
-          # 3. تثبيت وتوليد ملفات Gradle Wrapper رسمياً داخل السيرفر مباشرة لتفادي الملفات المفقودة
-          echo "جاري تثبيت نظام بناء Gradle تلقائياً..."
-          gradle wrapper --gradle-version 8.7
+          # 3. تفعيل أداة تثبيت الحزم وتثبيت Gradle برمجياً داخل السيرفر
+          echo "جاري تهيئة البيئة وتثبيت Gradle..."
+          [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install gradle 8.7
           
-          # 4. منح الصلاحيات الكاملة وتشغيل بناء التطبيق
+          # 4. توليد ملفات الـ Wrapper ومنح الصلاحيات
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
+          
+          # 5. تشغيل بناء الـ APK مباشرة
           ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
