@@ -7,22 +7,22 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Auto-Detect Project Root and Build APK
+      - name: Extract Project and Install Build Tools
         script: |
-          # 1. فك ضغط ملف المشروع
+          # 1. فك ضغط ملف المشروع المستلم من الجوال
           unzip -o "rafiq.zip" -d extracted_project
           cd extracted_project
           
-          # 2. البحث التلقائي والديناميكي عن مجلد المشروع الحقيقي الذي يحتوي على gradlew
-          GRADLEW_PATH=$(find . -name "gradlew" | head -n 1)
-          if [ -n "$GRADLEW_PATH" ]; then
-              cd "$(dirname "$GRADLEW_PATH")"
-              echo "تم العثور على مسار المشروع بنجاح: $(pwd)"
-          else
-              echo "تنبيه: لم يتم العثور على ملف gradlew، سيتم المحاولة في المجلد الحالي."
+          # 2. الدخول التلقائي للمجلد الداخلي للمشروع
+          if [ -d "rafiq" ]; then
+              cd rafiq
           fi
           
-          # 3. منح الصلاحيات وتشغيل بناء الـ APK مباشرة
+          # 3. تثبيت وتوليد ملفات Gradle Wrapper رسمياً داخل السيرفر مباشرة لتفادي الملفات المفقودة
+          echo "جاري تثبيت نظام بناء Gradle تلقائياً..."
+          gradle wrapper --gradle-version 8.7
+          
+          # 4. منح الصلاحيات الكاملة وتشغيل بناء التطبيق
           chmod +x gradlew
           ./gradlew assembleDebug
     artifacts:
