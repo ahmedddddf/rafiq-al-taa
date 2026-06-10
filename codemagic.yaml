@@ -18,16 +18,190 @@ workflows:
               cd rafiq
           fi
           
-          # 3. تفعيل أداة تثبيت الحزم وتثبيت الإصدار الحديث المتوافق 9.3.1
-          echo "جاري تهيئة البيئة وتثبيت Gradle 9.3.1..."
+          # 3. تثبيت الإصدار الحديث المتوافق 9.3.1 وتوليد الـ Wrapper
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install gradle 9.3.1
-          
-          # 4. توليد ملفات الـ Wrapper بالإصدار الصحيح ومنح الصلاحيات
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
-          # 5. تشغيل بناء الـ APK مباشرة
+          # 4. تحديد مسار الحزم الحقيقي لإنشاء ملفات الميزات الجديدة بشكل مستقل ونظيف دون المساس بالـ MainActivity
+          MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
+          MAIN_DIR=$(dirname "$MAIN_ACTIVITY_PATH")
+          
+          # إنشاء شاشة المكتبة والمصحف الصامت في ملف منفصل ومستقل
+          cat << 'EOF' > "$MAIN_DIR/CustomLibraryAndQuran.kt"
+          package com.example.ui
+
+          import android.net.Uri
+          import androidx.activity.compose.rememberLauncherForActivityResult
+          import androidx.activity.result.contract.ActivityResultContracts
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.lazy.itemsIndexed
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.text.style.TextAlign
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+          import java.io.File
+          import java.io.FileOutputStream
+
+          @Composable
+          fun EnhancedLibraryScreen(onNavigateToQuran: () -> Unit = {}) {
+              val context = LocalContext.current
+              var booksList by remember { mutableStateOf(listOf<File>()) }
+              var showQuranScreen by remember { mutableStateOf(false) }
+
+              if (showQuranScreen) {
+                  CleanQuranReaderScreen(onBack = { showQuranScreen = false })
+              } else {
+                  val folder = File(context.filesDir, "my_custom_books")
+                  if (folder.exists()) {
+                      booksList = folder.listFiles()?.filter { it.extension == "pdf" }?.toList() ?: emptyList()
+                  }
+
+                  val filePickerLauncher = rememberLauncherForActivityResult(
+                      contract = ActivityResultContracts.GetContent()
+                  ) { uri: Uri? ->
+                      uri?.let { selectedUri ->
+                          val f = File(context.filesDir, "my_custom_books")
+                          if (!f.exists()) f.mkdirs()
+                          val fileName = "كتاب_${System.currentTimeMillis()}.pdf"
+                          val destFile = File(f, fileName)
+                          context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
+                              FileOutputStream(destFile).use { outputStream -> inputStream.copyTo(outputStream) }
+                          }
+                      }
+                  }
+
+                  Scaffold(
+                      modifier = Modifier.navigationBarsPadding(),
+                      floatingActionButton = {
+                          FloatingActionButton(onClick = { filePickerLauncher.launch("application/pdf") }) {
+                              Text(text = "+ إضافة كتاب PDF", modifier = Modifier.padding(horizontal = 8.dp))
+                          }
+                      }
+                  ) { paddingValues ->
+                      Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+                          Card(
+                              modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { showQuranScreen = true },
+                              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                          ) {
+                              Text(text = "📖 تصفح المصحف الشريف (للقراءة فقط)", modifier = Modifier.padding(16.dp).fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 16.sp)
+                          }
+                          Text(text = "كتبك المضافة ديناميكياً:", style = MaterialTheme.typography.titleMedium)
+                          Spacer(modifier = Modifier.height(8.dp))
+                          if (booksList.isEmpty()) {
+                              Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                  Text(text = "المكتبة فارغة حالياً.\nاضغط على الزر بالأسفل لإضافة أي كتاب يعجبك مباشرة.", textAlign = TextAlign.Center)
+                              }
+                          } else {
+                              LazyColumn {
+                                  items(booksList) { file ->
+                                      Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                          Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                              Text(text = file.nameWithoutExtension, modifier = Modifier.weight(1f))
+                                              Button(onClick = { }) { Text("قراءة") }
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun CleanQuranReaderScreen(onBack: () -> Unit) {
+              val quranSurahs = listOf("الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف")
+              var selectedSurval by remember { mutableStateOf<String?>(null) }
+              if (selectedSurval == null) {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                          Button(onClick = onBack) { Text("رجوع") }
+                          Spacer(modifier = Modifier.width(16.dp))
+                          Text("المصحف الشريف للقراءة", fontSize = 20.sp)
+                      }
+                      Spacer(modifier = Modifier.height(16.dp))
+                      LazyColumn {
+                          itemsIndexed(quranSurahs) { index, surah ->
+                              Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedSurval = surah }) {
+                                  Text(text = "سورة ${surah}", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+                              }
+                          }
+                      }
+                  }
+              } else {
+                  Column(modifier = Modifier.fillMaxSize().padding(16.dp).navigationBarsPadding()) {
+                      Button(onClick = { selectedSurval = null }) { Text("عودة للسور") }
+                      Spacer(modifier = Modifier.height(16.dp))
+                      Text(text = "سورة ${selectedSurval}", fontSize = 22.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                      Spacer(modifier = Modifier.height(16.dp))
+                      Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                          Text(text = "نص السورة الكامل للقراءة الهادئة يظهر هنا بوضوح وبدون تشغيل أي ملفات صوتية...", fontSize = 18.sp, textAlign = TextAlign.Center)
+                      }
+                  }
+              }
+          }
+          EOF
+
+          # إنشاء مستقبل الإشعارات التذكيرية المستقل
+          cat << 'EOF' > "$MAIN_DIR/ReminderBroadcastReceiver.kt"
+          package com.example.ui
+
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.content.BroadcastReceiver
+          import android.content.Context
+          import android.content.Intent
+          import android.os.Build
+          import androidx.core.app.NotificationCompat
+
+          class ReminderBroadcastReceiver : BroadcastReceiver() {
+              override fun onReceive(context: Context, intent: Intent) {
+                  val reminders = listOf(
+                      "🔴 رفيق الطاعة: سبحان الله وبحمده، سبحان الله العظيم.",
+                      "🔴 رفيق الطاعة: صلِّ على محمد ونل شفاعته يوم القيامة.",
+                      "🔴 رفيق الطاعة: لا حول ولا قوة إلا بالله كنز من كنوز الجنة.",
+                      "🔴 رفيق الطاعة: أستغفر الله العظيم وأتوب إليه.",
+                      "🔴 رفيق الطاعة: لا إله إلا أنت سبحانك إني كنت من الظالمين."
+                  )
+                  val randomReminder = reminders.random()
+                  val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                  val channelId = "taaa_reminders_channel"
+
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      val channel = NotificationChannel(channelId, "تذكيرات رفيق الطاعة", NotificationManager.IMPORTANCE_HIGH)
+                      notificationManager.createNotificationChannel(channel)
+                  }
+
+                  val notification = NotificationCompat.Builder(context, channelId)
+                      .setContentTitle("تذكير رفيق الطاعة")
+                      .setContentText(randomReminder)
+                      .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                      .setAutoCancel(true)
+                      .build()
+
+                  notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+              }
+          }
+          EOF
+
+          # 5. تعديل الـ AndroidManifest لتسجيل مستقبل الإشعارات تلقائياً
+          MANIFEST_PATH=$(find . -name "AndroidManifest.xml" | head -n 1)
+          sed -i '' '/<\/application>/i \
+          <receiver android:name="com.example.ui.ReminderBroadcastReceiver" android:exported="false" />' "$MANIFEST_PATH"
+
+          # 6. إنشاء وتوليد ملف التوقيع debug.keystore تلقائياً داخل مسار مشروعك لحل خطأ الـ Keystore مئة بالمئة
+          keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          # 7. تشغيل بناء الـ APK النظيف والمستقر
           ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
