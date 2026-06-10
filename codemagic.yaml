@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Extract Project, Clean Cache and Build
+      - name: Extract and Build Original Stable APK
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,20 +18,17 @@ workflows:
               cd rafiq
           fi
           
-          # 3. استرجاع ملف MainActivity.kt الأصلي النظيف وتصفير أي تعديل خاطئ قديم
-          git checkout -- app/src/main/java/com/example/MainActivity.kt 2>/dev/null || true
-          
-          # 4. تثبيت الإصدار الحديث المتوافق 9.3.1 وتوليد الـ Wrapper
+          # 3. تهيئة البيئة وتثبيت إصدار الجرادل المتوافق 9.3.1
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install gradle 9.3.1
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
-          # 5. توليد ملف التوقيع وتوزيعه في كل المسارات المحتملة لحل خطأ الـ Keystore
+          # 4. توليد ملف التوقيع لحل مشكلة الـ Keystore نهائياً
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 6. تنظيف كاش الجرادل وتشغيل البناء النظيف المستقر
+          # 5. تشغيل البناء الصافي
           ./gradlew clean
           ./gradlew assembleDebug
     artifacts:
