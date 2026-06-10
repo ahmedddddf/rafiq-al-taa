@@ -18,13 +18,13 @@ workflows:
               cd rafiq
           fi
           
-          # 3. تفعيل أداة تثبيت الحزم وتثبيت Gradle برمجياً داخل السيرفر
-          echo "جاري تهيئة البيئة وتثبيت Gradle..."
+          # 3. تفعيل أداة تثبيت الحزم وتثبيت الإصدار الحديث المتوافق 9.3.1
+          echo "جاري تهيئة البيئة وتثبيت Gradle 9.3.1..."
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install gradle 8.7
+          sdk install gradle 9.3.1
           
-          # 4. توليد ملفات الـ Wrapper ومنح الصلاحيات
-          gradle wrapper --gradle-version 8.7
+          # 4. توليد ملفات الـ Wrapper بالإصدار الصحيح ومنح الصلاحيات
+          gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
           # 5. تشغيل بناء الـ APK مباشرة
