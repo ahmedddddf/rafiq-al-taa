@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Force Clean Build and Restore Original App
+      - name: Reset MainActivity to Git Version and Build
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,24 +18,9 @@ workflows:
               cd rafiq
           fi
           
-          # 2. استبدال ملف MainActivity بكود أندرويد افتراضي نظيف تماماً لتجنب مشاكل الأسماء والتداخلات
-          MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
-          if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري كتابة ملف MainActivity.kt قياسي ونظيف..."
-              cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
-              package com.example
-
-              import android.os.Bundle
-              import androidx.activity.ComponentActivity
-
-              class MainActivity : ComponentActivity() {
-                  override fun onCreate(savedInstanceState: Bundle?) {
-                      super.onCreate(savedInstanceState)
-                      // بناء افتراضي نظيف لتشغيل التطبيق والاعتماد على الواجهات المستقرة داخل المشروع
-                  }
-              }
-          EOF
-          fi
+          # 2. إجبار السيرفر على استرجاع ملف MainActivity.kt الأصلي والمستقر من مستودع الـ Git وتصفير أي خطأ
+          echo "جاري استرجاع نسخة MainActivity الأصلية والنظيفة..."
+          git checkout -- app/src/main/java/com/example/MainActivity.kt 2>/dev/null || true
           
           # 3. تهيئة البيئة وتثبيت إصدار الجرادل المتوافق 9.3.1
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
