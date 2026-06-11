@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Force Clean Build and Write Pure Main Path
+      - name: Force Clean Build and Link Original Compose UI
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,21 +18,33 @@ workflows:
               cd rafiq
           fi
           
-          # 2. استبدال ملف MainActivity بكود قياسي نقي يستدعي واجهات أندرويد الافتراضية لتجنب مشاكل الأسماء والثيمات
+          # 2. استبدال ملف MainActivity بكود يربط تطبيقك بـ Compose بشكل صحيح ومضمون
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري تطهير وبناء ملف MainActivity.kt من الصفر..."
+              echo "جاري بناء MainActivity.kt وربطه بواجهات المشروع..."
               rm -f "$MAIN_ACTIVITY_PATH"
               cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
               package com.example
 
               import android.os.Bundle
               import androidx.activity.ComponentActivity
+              import androidx.activity.compose.setContent
+              import androidx.compose.foundation.layout.fillMaxSize
+              import androidx.compose.material3.MaterialTheme
+              import androidx.compose.material3.Surface
+              import androidx.compose.ui.Modifier
 
               class MainActivity : ComponentActivity() {
                   override fun onCreate(savedInstanceState: Bundle?) {
                       super.onCreate(savedInstanceState)
-                      // كود نقي وآمن تماماً لتشغيل التطبيق والاعتماد على الواجهات الحقيقية للمشروع المحددة في الـ Manifest
+                      setContent {
+                          MaterialTheme {
+                              Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                                  // استدعاء شاشتك الرئيسية النظيفة مباشرة من ملفات الـ ui الخاصة بك
+                                  com.example.ui.MainAppContent()
+                              }
+                          }
+                      }
                   }
               }
           EOF
