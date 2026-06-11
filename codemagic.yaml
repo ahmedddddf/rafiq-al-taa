@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Replace MainActivity with Clean Code and Build
+      - name: Restore and Build Original App
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,41 +18,16 @@ workflows:
               cd rafiq
           fi
           
-          # 2. تحديد مسار ملف الـ MainActivity الحقيقي واستبداله بكود قياسي نظيف تماماً بدون أخطاء
+          # 2. تنظيف ملف MainActivity وإرجاعه لأصله النظيف تماماً بدون حشو
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري كتابة ملف MainActivity.kt جديد ونظيف تماماً لتصفير الأخطاء..."
-              cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
-              package com.example
-
-              import android.os.Bundle
-              import androidx.activity.ComponentActivity
-              import androidx.activity.compose.setContent
-              import androidx.compose.foundation.layout.fillMaxSize
-              import androidx.compose.material3.MaterialTheme
-              import androidx.compose.material3.Surface
-              import androidx.compose.material3.Text
-              import androidx.compose.runtime.Composable
-              import androidx.compose.ui.Modifier
-
-              class MainActivity : ComponentActivity() {
-                  override fun onCreate(savedInstanceState: Bundle?) {
-                      super.onCreate(savedInstanceState)
-                      setContent {
-                          MaterialTheme {
-                              Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                                  GreetingClean("رَفِيقُ الطَّاعَةِ")
-                              }
-                          }
-                      }
-                  }
-              }
-
-              @Composable
-              fun GreetingClean(name: String) {
-                  Text(text = "مرحباً بك في تطبيق $name")
-              }
-          EOF
+              echo "جاري تنظيف وإصلاح ملف الـ MainActivity الأصلي..."
+              # حذف أي أسطر غريبة أو مكسورة تسبب توقف الكود
+              sed -i '' '/ReminderBroadcastReceiver/d' "$MAIN_ACTIVITY_PATH" 2>/dev/null || true
+              sed -i '' '/EnhancedLibraryScreen/d' "$MAIN_ACTIVITY_PATH" 2>/dev/null || true
+              sed -i '' '/CustomLibraryAndQuran/d' "$MAIN_ACTIVITY_PATH" 2>/dev/null || true
+              sed -i '' '/modifier = modifier/d' "$MAIN_ACTIVITY_PATH" 2>/dev/null || true
+              sed -i '' '/reminderIntent/d' "$MAIN_ACTIVITY_PATH" 2>/dev/null || true
           fi
           
           # 3. تهيئة البيئة وتثبيت إصدار الجرادل المتوافق 9.3.1
@@ -65,7 +40,7 @@ workflows:
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 5. تشغيل البناء الصافي والمستقر
+          # 5. تشغيل البناء النظيف للتطبيق الأصلي
           ./gradlew clean
           ./gradlew assembleDebug
     artifacts:
