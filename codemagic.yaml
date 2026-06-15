@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Clean Build and Auto-Link Available UI
+      - name: Auto-Detect UI and Build Real App
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,28 +18,32 @@ workflows:
               cd rafiq
           fi
           
-          # 2. بناء ملف MainActivity ذكي يتفادى أخطاء التجميع ويستدعي الواجهة برمجياً أثناء التشغيل
+          # 2. البحث تلقائياً عن اسم دالة الملاحة أو الواجهة الرئيسية في ملفات الـ UI الخاصة بك
+          REAL_NAV_FUNCTION=$(grep -rE '@Composable.*Screen|@Composable.*App|@Composable.*Main' app/src/main/java/ | grep -v 'MainActivity' | head -n 1 | sed -n 's/.*fun \([a-zA-Z0-9_]*\).*/\1/p')
+          REAL_NAV_PACKAGE=$(find app/src/main/java/ -name "*.kt" | xargs grep -l "fun $REAL_NAV_FUNCTION" | head -n 1 | sed 's|.*java/||' | sed 's|/[^/]*$||' | tr '/' '.')
+          
+          # إذا لم يجدها آلياً، نضع قيم افتراضية آمنة
+          if [ -z "$REAL_NAV_FUNCTION" ]; then
+              REAL_NAV_FUNCTION="MainScreen"
+              REAL_NAV_PACKAGE="com.example.ui"
+          fi
+          
+          # 3. إعادة بناء الـ MainActivity وربطه بالدالة الحقيقية المستخرجة تلقائياً من مشروعك
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري بناء MainActivity.kt الديناميكي لحل أخطاء التجميع..."
+              echo "جاري ربط MainActivity بدالة العرض الحقيقية: $REAL_NAV_PACKAGE.$REAL_NAV_FUNCTION"
               rm -f "$MAIN_ACTIVITY_PATH"
-              cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
+              cat << EOF > "$MAIN_ACTIVITY_PATH"
               package com.example
 
               import android.os.Bundle
               import androidx.activity.ComponentActivity
               import androidx.activity.compose.setContent
               import androidx.compose.foundation.layout.fillMaxSize
-              import androidx.compose.foundation.layout.padding
               import androidx.compose.material3.MaterialTheme
               import androidx.compose.material3.Surface
-              import androidx.compose.material3.Text
-              import androidx.compose.runtime.Composable
               import androidx.compose.ui.Modifier
-              import androidx.compose.ui.unit.dp
-              import androidx.compose.foundation.layout.Box
-              import androidx.compose.ui.Alignment
-              import androidx.compose.ui.text.style.TextAlign
+              import ${REAL_NAV_PACKAGE}.${REAL_NAV_FUNCTION}
 
               class MainActivity : ComponentActivity() {
                   override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,36 +51,27 @@ workflows:
                       setContent {
                           MaterialTheme {
                               Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                                  DynamicUIApp()
+                                  // تشغيل واجهتك الحقيقية والأصلية مباشرة هنا
+                                  ${REAL_NAV_FUNCTION}()
                               }
                           }
                       }
                   }
               }
-
-              @Composable
-              fun DynamicUIApp() {
-                  // محاولة تشغيل واجهة التطبيق برمجياً لتفادي توقف البناء في السيرفر
-                  Text(
-                      text = "جاري تحميل رَفِيقُ الطَّاعَةِ...",
-                      modifier = Modifier.fillMaxSize().padding(32.dp),
-                      textAlign = TextAlign.Center
-                  )
-              }
           EOF
           fi
           
-          # 3. تهيئة البيئة وتثبيت إصدار الجرادر المتوافق 9.3.1
+          # 4. تهيئة البيئة وتثبيت إصدار الجرادر المتوافق 9.3.1
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install gradle 9.3.1
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
-          # 4. توليد ملف التوقيع لضمان تخطي خطأ الـ Keystore
+          # 5. توليد ملف التوقيع لضمان تخطي خطأ الـ Keystore
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 5. تشغيل البناء الصافي المستقر
+          # 6. تشغيل البناء المستقر للنسخة الكاملة
           ./gradlew clean
           ./gradlew assembleDebug
     artifacts:
