@@ -7,7 +7,7 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Auto-Detect UI and Build Real App
+      - name: Build Diagnostics APK
         script: |
           # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
@@ -18,20 +18,13 @@ workflows:
               cd rafiq
           fi
           
-          # 2. البحث تلقائياً عن اسم دالة الملاحة أو الواجهة الرئيسية في ملفات الـ UI الخاصة بك
-          REAL_NAV_FUNCTION=$(grep -rE '@Composable.*Screen|@Composable.*App|@Composable.*Main' app/src/main/java/ | grep -v 'MainActivity' | head -n 1 | sed -n 's/.*fun \([a-zA-Z0-9_]*\).*/\1/p')
-          REAL_NAV_PACKAGE=$(find app/src/main/java/ -name "*.kt" | xargs grep -l "fun $REAL_NAV_FUNCTION" | head -n 1 | sed 's|.*java/||' | sed 's|/[^/]*$||' | tr '/' '.')
+          # 2. استخراج أسماء أهم ملفات الـ UI برمجياً وطباعتها بداخل نص متحرك لتظهر لك على شاشة الجوال
+          UI_FILES=$(find app/src/main/java/ -name "*.kt" | sed 's|.*/||' | head -n 5 | tr '\n' ' ')
           
-          # إذا لم يجدها آلياً، نضع قيم افتراضية آمنة
-          if [ -z "$REAL_NAV_FUNCTION" ]; then
-              REAL_NAV_FUNCTION="MainScreen"
-              REAL_NAV_PACKAGE="com.example.ui"
-          fi
-          
-          # 3. إعادة بناء الـ MainActivity وربطه بالدالة الحقيقية المستخرجة تلقائياً من مشروعك
+          # 3. بناء ملف MainActivity نظيف ومضمون النجاح يعرض الملفات المتوفرة لتكتشف الاسم الصحيح دالتك
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
           if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري ربط MainActivity بدالة العرض الحقيقية: $REAL_NAV_PACKAGE.$REAL_NAV_FUNCTION"
+              echo "جاري بناء MainActivity تشخيصي ومضمون النجاح..."
               rm -f "$MAIN_ACTIVITY_PATH"
               cat << EOF > "$MAIN_ACTIVITY_PATH"
               package com.example
@@ -39,11 +32,13 @@ workflows:
               import android.os.Bundle
               import androidx.activity.ComponentActivity
               import androidx.activity.compose.setContent
-              import androidx.compose.foundation.layout.fillMaxSize
-              import androidx.compose.material3.MaterialTheme
-              import androidx.compose.material3.Surface
+              import androidx.compose.foundation.layout.*
+              import androidx.compose.material3.*
+              import androidx.compose.runtime.*
               import androidx.compose.ui.Modifier
-              import ${REAL_NAV_PACKAGE}.${REAL_NAV_FUNCTION}
+              import androidx.compose.ui.unit.dp
+              import androidx.compose.ui.Alignment
+              import androidx.compose.ui.text.style.TextAlign
 
               class MainActivity : ComponentActivity() {
                   override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,8 +46,25 @@ workflows:
                       setContent {
                           MaterialTheme {
                               Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                                  // تشغيل واجهتك الحقيقية والأصلية مباشرة هنا
-                                  ${REAL_NAV_FUNCTION}()
+                                  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                      Column(
+                                          horizontalAlignment = Alignment.CenterHorizontally,
+                                          verticalArrangement = Arrangement.Center,
+                                          modifier = Modifier.padding(24.dp)
+                                      ) {
+                                          Text(
+                                              text = "رَفِيقُ الطَّاعَةِ 🎯",
+                                              style = MaterialTheme.typography.headlineMedium,
+                                              textAlign = TextAlign.Center
+                                          )
+                                          Spacer(modifier = Modifier.height(16.dp))
+                                          Text(
+                                              text = "الملفات المكتشفة في مشروعك هي:\n\n$UI_FILES\n\nقم بتصوير هذه الشاشة وأرسلها لي لأعرف اسم دالتك الرئيسية ونربطها فوراً!",
+                                              textAlign = TextAlign.Center,
+                                              style = MaterialTheme.typography.bodyLarge
+                                          )
+                                      }
+                                  }
                               }
                           }
                       }
@@ -71,7 +83,7 @@ workflows:
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 6. تشغيل البناء المستقر للنسخة الكاملة
+          # 6. تشغيل البناء الصافي المضمون
           ./gradlew clean
           ./gradlew assembleDebug
     artifacts:
