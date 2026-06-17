@@ -3,44 +3,163 @@ workflows:
     name: Android APK Build
     max_build_duration: 60
     instance_type: mac_mini_m1
+    environment:
+      vars:
+        JAVA_VERSION: "17"
     scripts:
       - name: Build Rafiq Al-Taa Full Worship Tracker
         script: |
+          # 1. تنظيف البيئة وبناء هيكل مشروع أندرويد نقي من الصفر
+          rm -rf *
           mkdir -p app/src/main/java/com/example
+          mkdir -p app/src/main/res/values
+          
+          # 2. توليد ملفات إعدادات الجرادل (Gradle) المتوافقة والمستقرة
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { 
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
+              }
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          EOF
+
+          cat << 'EOF' > settings.gradle
+          include ':app'
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.example'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.example.rafiq"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes { release { minifyEnabled false } }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+              kotlinOptions { jvmTarget = '17' }
+              buildFeatures { compose true }
+              composeOptions { kotlinCompilerExtensionVersion '1.5.8' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+              implementation 'androidx.activity:activity-compose:1.8.2'
+              implementation platform('androidx.compose:compose-bom:2023.10.01')
+              implementation 'androidx.compose.ui:ui'
+              implementation 'androidx.compose.ui:ui-graphics'
+              implementation 'androidx.compose.material3:material3'
+          }
+          EOF
+
+          # 3. بناء ملف الـ Manifest المستقر
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="رفيق الطاعة" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity android:name="com.example.MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # 4. بناء ملف MainActivity.kt المتكامل لمتابعة جميع العبادات مع الفهرس والمسبحة والإطار الذهبي
           cat << 'EOF' > app/src/main/java/com/example/MainActivity.kt
           package com.example
+
           import android.os.Bundle
           import androidx.activity.ComponentActivity
           import androidx.activity.compose.setContent
+          import androidx.compose.foundation.background
+          import androidx.compose.foundation.border
+          import androidx.compose.foundation.clickable
           import androidx.compose.foundation.layout.*
           import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.material.icons.Icons
+          import androidx.compose.material.icons.filled.Home
+          import androidx.compose.material.icons.filled.Book
+          import androidx.compose.material.icons.filled.Notifications
+          import androidx.compose.material.icons.filled.ArrowBack
+          import androidx.compose.material.icons.filled.Refresh
           import androidx.compose.material3.*
           import androidx.compose.runtime.*
           import androidx.compose.ui.Modifier
-          import androidx.compose.ui.unit.dp
           import androidx.compose.ui.graphics.Color
-          import androidx.compose.material.icons.Icons
-          import androidx.compose.material.icons.filled.CheckCircle
-          
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.text.font.FontWeight
+          import androidx.compose.ui.text.style.TextAlign
+
+          data class SurahItem(val id: Int, val name: String, val type: String, val verses: Int)
+          data class WorshipItem(val name: String, val icon: String)
+
           class MainActivity : ComponentActivity() {
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   setContent {
-                      val primary = Color(0xFF006644)
-                      Surface(color = Color(0xFFFBF8F3), modifier = Modifier.fillMaxSize()) {
-                          Column(modifier = Modifier.padding(16.dp)) {
-                              Text("سجل العبادات اليومي", style = MaterialTheme.typography.headlineMedium, color = primary)
-                              Spacer(modifier = Modifier.height(16.dp))
-                              
-                              val tasks = listOf("الصلاة في وقتها", "قراءة ورد القرآن", "أذكار الصباح والمساء", "الصدقة", "الاستغفار")
-                              tasks.forEach { task ->
-                                  var checked by remember { mutableStateOf(false) }
-                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                      Row(modifier = Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                          Checkbox(checked = checked, onCheckedChange = { checked = it })
-                                          Text(task, modifier = Modifier.padding(start = 8.dp))
-                                          if(checked) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = primary, modifier = Modifier.padding(start = 8.dp))
-                                      }
+                      val customPrimary = Color(0xFF006644)      // أخضر زمردي
+                      val customBackground = Color(0xFFFBF8F3)   // بيج سكري
+                      val customSurface = Color(0xFFFFFFFF)      // كروت بيضاء
+                      val customText = Color(0xFF2C3E50)         // نصوص داكنة
+
+                      val islamicColorScheme = lightColorScheme(
+                          primary = customPrimary,
+                          onPrimary = Color.White,
+                          background = customBackground,
+                          surface = customSurface,
+                          onBackground = customText,
+                          onSurface = customText
+                      )
+
+                      MaterialTheme(colorScheme = islamicColorScheme) {
+                          var selectedTab by remember { mutableStateOf(0) } // يفتح على شاشة متابعة العبادات مباشرة
+                          
+                          Scaffold(
+                              containerColor = customBackground,
+                              bottomBar = {
+                                  NavigationBar(containerColor = customSurface) {
+                                      NavigationBarItem(
+                                          selected = selectedTab == 0,
+                                          onClick = { selectedTab = 0 },
+                                          icon = { Icon(Icons.Default.Home, contentDescription = "العبادات") },
+                                          label = { Text("العبادات") }
+                                      )
+                                      NavigationBarItem(
+                                          selected = selectedTab == 1,
+                                          onClick = { selectedTab = 1 },
+                                          icon = { Icon(Icons.Default.Book, contentDescription = "المصحف") },
+                                          label = { Text("المصحف") }
+                                      )
+                                      NavigationBarItem(
+                                          selected = selectedTab == 2,
+                                          onClick = { selectedTab = 2 },
+                                          icon = { Icon(Icons.Default.Notifications, contentDescription = "المسبحة") },
+                                          label = { Text("المسبحة") }
+                                      )
+                                  }
+                              }
+                          ) { paddingValues ->
+                              Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                                  when (selectedTab) {
+                                      0 -> WorshipTrackerScreen(customPrimary, customSurface, customText)
+                                      1 -> QuranNavigation(customPrimary, customSurface, customText)
+                                      2 -> RemindersScreen(customPrimary, customSurface, customText)
                                   }
                               }
                           }
@@ -48,13 +167,186 @@ workflows:
                   }
               }
           }
+
+          @Composable
+          fun WorshipTrackerScreen(primaryColor: Color, surfaceColor: Color, textColor: Color) {
+              val worshipList = listOf(
+                  WorshipItem("المتابعة في الصلاة (الفريضة والسنن)", "🕌"),
+                  WorshipItem("قراءة ورد القرآن الكريم اليومي", "📖"),
+                  WorshipItem("أذكار الصباح والمساء", "✨"),
+                  WorshipItem("إخراج الصدقة اليومية", "🪙"),
+                  WorshipItem("بر الوالدين وصلة الرحم", "🤝")
+              )
+
+              Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                  Text(
+                      text = "سِجِلُّ العِبَادَاتِ اليَوْمِيِّ 🎯",
+                      style = MaterialTheme.typography.headlineMedium,
+                      color = primaryColor,
+                      fontWeight = FontWeight.Bold,
+                      modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                      textAlign = TextAlign.Center
+                  )
+
+                  LazyColumn {
+                      items(worshipList) { item ->
+                          var isChecked by remember { mutableStateOf(false) }
+                          Card(
+                              colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                              modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                              elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                          ) {
+                              Row(
+                                  modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                  verticalAlignment = Alignment.CenterVertically,
+                                  horizontalArrangement = Arrangement.SpaceBetween
+                              ) {
+                                  Checkbox(
+                                      checked = isChecked,
+                                      onCheckedChange = { isChecked = it },
+                                      colors = CheckboxDefaults.colors(checkedColor = primaryColor)
+                                  )
+                                  Row(verticalAlignment = Alignment.CenterVertically) {
+                                      Text(text = item.name, style = MaterialTheme.typography.bodyLarge, color = textColor, fontWeight = FontWeight.Medium)
+                                      Spacer(modifier = Modifier.width(8.dp))
+                                      Text(text = item.icon, fontSize = 22.sp)
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun QuranNavigation(primaryColor: Color, surfaceColor: Color, textColor: Color) {
+              var selectedSurah by remember { mutableStateOf<SurahItem?>(null) }
+              if (selectedSurah == null) {
+                  SurahListScreen(primaryColor, surfaceColor, onSurahSelect = { selectedSurah = it })
+              } else {
+                  SurahDetailScreen(surah = selectedSurah!!, primaryColor = primaryColor, surfaceColor = surfaceColor, textColor = textColor, onBack = { selectedSurah = null })
+              }
+          }
+
+          @Composable
+          fun SurahListScreen(primaryColor: Color, surfaceColor: Color, onSurahSelect: (SurahItem) -> Unit) {
+              val quranSurahs = listOf(
+                  SurahItem(1, "الفاتحة", "مكية", 7),
+                  SurahItem(2, "البقرة", "مدنية", 286),
+                  SurahItem(3, "آل عمران", "مدنية", 200),
+                  SurahItem(5, "المائدة", "مدنية", 120),
+                  SurahItem(9, "التوبة", "مدنية", 129),
+                  SurahItem(67, "الملك", "مكية", 30),
+                  SurahItem(112, "الإخلاص", "مكية", 4),
+                  SurahItem(113, "الفلق", "مكية", 5),
+                  SurahItem(114, "الناس", "مكية", 6)
+              )
+              Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                  Text(text = "المصحف الشريف 📖", style = MaterialTheme.typography.headlineMedium, color = primaryColor, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                  LazyColumn {
+                      items(quranSurahs) { surah ->
+                          Card(
+                              colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                              modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onSurahSelect(surah) }
+                          ) {
+                              Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                  Column {
+                                      Text(text = "آياتها", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                      Text(text = "${surah.verses}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = primaryColor)
+                                  }
+                                  Text(text = if (surah.type == "مكية") "🕋 مكية" else "🕌 مدنية", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.background(Color(0xFFE8F5E9), shape = RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp), color = primaryColor)
+                                  Text(text = surah.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun SurahDetailScreen(surah: SurahItem, primaryColor: Color, surfaceColor: Color, textColor: Color, onBack: () -> Unit) {
+              val surahText = when(surah.name) {
+                  "الفاتحة" -> "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾"
+                  "البقرة" -> "الم ﴿١﴾ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ ﴿٢﴾ الَّذِينَ يُؤْمِنُونَ بِالْغَيْبِ وَيُقِيمُونَ الصَّلَاةَ وَمِمَّا رَزَقْنَاهُمْ يُنفِقُونَ ﴿٣﴾"
+                  "آل عمران" -> "الم ﴿١﴾ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ﴿٢﴾ نَزَّلَ عَلَيْكَ الْكِتَابَ بِالْحَقِّ مُصَدِّقًا لِّمَا بَيْنَ يَدَيْهِ ﴿٣﴾"
+                  "المائدة" -> "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ ۚ أُحِلَّتْ لَكُم بَهِيمَةُ الْأَنْعَامِ إِلَّا مَا يُتْلَىٰ عَلَيْكُمْ ﴿١﴾"
+                  "التوبة" -> "بَرَاءَةٌ مِّنَ اللَّهِ وَرَسُولِهِ إِلَى الَّذِينَ عَاهَدتُّم مِّنَ الْمُشْرِكِينَ ﴿١﴾ فَسِيحُوا فِي الْأَرْضِ أَرْبَعَةَ أَشْهُرٍ وَاعْلَمُوا أَنَّكُمْ غَيْرُ مُعْجِزِي اللَّهِ ﴿٢﴾"
+                  "الملك" -> "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خخلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ﴿٢﴾"
+                  "الإخلاص" -> "قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾"
+                  "الفلق" -> "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾"
+                  "الناس" -> "قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾"
+                  else -> ""
+              }
+              Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                  Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                      IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "رجوع", tint = primaryColor) }
+                      Spacer(modifier = Modifier.weight(1f))
+                      Text(text = "سُورَةُ ${surah.name}", style = MaterialTheme.typography.headlineSmall, color = primaryColor, fontWeight = FontWeight.Bold)
+                  }
+                  Card(colors = CardDefaults.cardColors(containerColor = surfaceColor), modifier = Modifier.fillMaxSize()) {
+                      LazyColumn(modifier = Modifier.fillMaxSize().padding(4.dp).border(2.dp, Color(0xFFD4AF37), shape = RoundedCornerShape(4.dp)).background(Color(0xFFFFFDF9)).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                          item {
+                              Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFFFF5D6), shape = RoundedCornerShape(4.dp)).border(1.dp, Color(0xFFD4AF37)).padding(8.dp), contentAlignment = Alignment.Center) {
+                                  Text(text = "﴿ سُورَةُ ${surah.name} ﴾", fontWeight = FontWeight.Bold, color = Color(0xFF5D4037))
+                              }
+                              Spacer(modifier = Modifier.height(16.dp))
+                          }
+                          if (surah.name != "التوبة") {
+                              item {
+                                  Text(text = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ", style = MaterialTheme.typography.titleLarge, color = primaryColor, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp), fontSize = 24.sp)
+                              }
+                          }
+                          item {
+                              Text(text = surahText, style = MaterialTheme.typography.bodyLarge, color = textColor, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), lineHeight = 42.sp, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun RemindersScreen(primaryColor: Color, surfaceColor: Color, textColor: Color) {
+              var count1 by remember { mutableStateOf(0) }
+              var count2 by remember { mutableStateOf(0) }
+              Column(modifier = Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                  Text(text = "أَذْكَارُ وَتَذْكِيرَاتٌ 🔔", style = MaterialTheme.typography.headlineMedium, color = primaryColor, modifier = Modifier.padding(bottom = 16.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                  Card(colors = CardDefaults.cardColors(containerColor = surfaceColor), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                      Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                          Text(text = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ", style = MaterialTheme.typography.titleLarge, color = textColor)
+                          Spacer(modifier = Modifier.height(12.dp))
+                          Row {
+                              Button(onClick = { count1++ }, colors = ButtonDefaults.buttonColors(containerColor = primaryColor)) { Text("العَدّ: $count1") }
+                              Spacer(modifier = Modifier.width(12.dp))
+                              IconButton(onClick = { count1 = 0 }) { Icon(Icons.Default.Refresh, contentDescription = "تصفير") }
+                          }
+                      }
+                  }
+                  Card(colors = CardDefaults.cardColors(containerColor = surfaceColor), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                      Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                          Text(text = "اللَّهُمَّ صَلِّ وَسَلِّ مْ عَلَى نَبِيِّنَا مُحَمَّدٍ", style = MaterialTheme.typography.titleLarge, color = textColor)
+                          Spacer(modifier = Modifier.height(12.dp))
+                          Row {
+                              Button(onClick = { count2++ }, colors = ButtonDefaults.buttonColors(containerColor = primaryColor)) { Text("العَدّ: $count2") }
+                              Spacer(modifier = Modifier.width(12.dp))
+                              IconButton(onClick = { count2 = 0 }) { Icon(Icons.Default.Refresh, contentDescription = "تصفير") }
+                          }
+                      }
+                  }
+              }
+          }
           EOF
-          # إعدادات Gradle الأصلية المستقرة
-          cat << 'EOF' > build.gradle
-          buildscript { repositories { google(); mavenCentral() } }
-          plugins { id 'com.android.application' version '8.2.2' apply false; id 'org.jetbrains.kotlin.android' version '1.9.22' apply false }
-          EOF
-          # بناء المشروع
-          ./gradlew assembleDebug
+          
+          # 5. إصلاح خطأ السيرفر الحاسم وتثبيت وتوليد ملفات الـ Wrapper كاملة من الصفر
+          [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install gradle 8.5
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
+          
+          # 6. توليد ملف التوقيع وتخطي الـ Keystore
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          cp debug.keystore app/debug.keystore 2>/dev/null || true
+          
+          # 7. التجميع الصافي للتطبيق النظيف والمطور
+          ./gradlew clean assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
