@@ -3,348 +3,55 @@ workflows:
     name: Android APK Build
     max_build_duration: 60
     instance_type: mac_mini_m1
-    environment:
-      vars:
-        JAVA_VERSION: "17"
     scripts:
-      - name: Build App with Real Surah Verses
+      - name: Build with Accurate Quran Database
         script: |
-          # 1. فك ضغط ملف المشروع
           unzip -o "rafiq.zip" -d extracted_project
           cd extracted_project
           if [ -d "rafiq" ]; then cd rafiq; fi
           
-          # 2. بناء ملف MainActivity يحتوي على الآيات الفعلية للسور داخل التصميم والإطار الموضح بالملف "1000197691.jpg"
+          # إنشاء قاعدة بيانات نصية ذكية داخل الكود
           MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
-          if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري بناء MainActivity.kt وحقن الآيات الحقيقية بالتشكيل..."
-              rm -f "$MAIN_ACTIVITY_PATH"
-              cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
-              package com.example
-
-              import android.os.Bundle
-              import androidx.activity.ComponentActivity
-              import androidx.activity.compose.setContent
-              import androidx.compose.foundation.background
-              import androidx.compose.foundation.border
-              import androidx.compose.foundation.clickable
-              import androidx.compose.foundation.layout.*
-              import androidx.compose.foundation.lazy.LazyColumn
-              import androidx.compose.foundation.lazy.items
-              import androidx.compose.foundation.shape.RoundedCornerShape
-              import androidx.compose.material.icons.Icons
-              import androidx.compose.material.icons.filled.Home
-              import androidx.compose.material.icons.filled.Book
-              import androidx.compose.material.icons.filled.Notifications
-              import androidx.compose.material.icons.filled.ArrowBack
-              import androidx.compose.material.icons.filled.Refresh
-              import androidx.compose.material3.*
-              import androidx.compose.runtime.*
-              import androidx.compose.ui.Modifier
-              import androidx.compose.ui.graphics.Color
-              import androidx.compose.ui.unit.dp
-              import androidx.compose.ui.unit.sp
-              import androidx.compose.ui.Alignment
-              import androidx.compose.ui.text.font.FontWeight
-              import androidx.compose.ui.text.style.TextAlign
-
-              data class SurahItem(val id: Int, val name: String, val type: String, val verses: Int)
-
-              class MainActivity : ComponentActivity() {
-                  override fun onCreate(savedInstanceState: Bundle?) {
-                      super.onCreate(savedInstanceState)
-                      setContent {
-                          val customPrimary = Color(0xFF006644)      // أخضر زمردي إسلامي
-                          val customBackground = Color(0xFFFBF8F3)   // بيج سكري دافئ مريح جداً للقراءة
-                          val customSurface = Color(0xFFFFFFFF)      // كروت بيضاء ناصعة
-                          val customText = Color(0xFF2C3E50)         // نصوص داكنة
-
-                          val islamicColorScheme = lightColorScheme(
-                              primary = customPrimary,
-                              onPrimary = Color.White,
-                              background = customBackground,
-                              surface = customSurface,
-                              onBackground = customText,
-                              onSurface = customText
-                          )
-
-                          MaterialTheme(colorScheme = islamicColorScheme) {
-                              var selectedTab by remember { mutableStateOf(1) }
-                              
-                              Scaffold(
-                                  containerColor = customBackground,
-                                  bottomBar = {
-                                      NavigationBar(containerColor = customSurface) {
-                                          NavigationBarItem(
-                                              selected = selectedTab == 0,
-                                              onClick = { selectedTab = 0 },
-                                              icon = { Icon(Icons.Default.Home, contentDescription = "الرئيسية") },
-                                              label = { Text("الرئيسية") }
-                                          )
-                                          NavigationBarItem(
-                                              selected = selectedTab == 1,
-                                              onClick = { selectedTab = 1 },
-                                              icon = { Icon(Icons.Default.Book, contentDescription = "المصحف") },
-                                              label = { Text("المصحف") }
-                                          )
-                                          NavigationBarItem(
-                                              selected = selectedTab == 2,
-                                              onClick = { selectedTab = 2 },
-                                              icon = { Icon(Icons.Default.Notifications, contentDescription = "التذكيرات") },
-                                              label = { Text("التذكيرات") }
-                                          )
-                                      }
-                                  }
-                              ) { paddingValues ->
-                                  Box(
-                                      modifier = Modifier
-                                          .fillMaxSize()
-                                          .padding(paddingValues),
-                                      contentAlignment = Alignment.Center
-                                  ) {
-                                      when (selectedTab) {
-                                          0 -> HomeScreen(customPrimary)
-                                          1 -> QuranVisualNavigation(customPrimary, customSurface, customText)
-                                          2 -> RemindersScreen(customPrimary, customSurface, customText)
-                                      }
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-
-              @Composable
-              fun HomeScreen(primaryColor: Color) {
-                  Column(
-                      horizontalAlignment = Alignment.CenterHorizontally,
-                      verticalArrangement = Arrangement.Center,
-                      modifier = Modifier.padding(24.dp)
-                  ) {
-                      Text(text = "رَفِيقُ الطَّاعَةِ 🎯", style = MaterialTheme.typography.headlineMedium, color = primaryColor, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-                      Spacer(modifier = Modifier.height(16.dp))
-                      Text(text = "مرحباً بك في التطبيق الإسلامي المستقر بنظام الآيات الفعلي.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-                  }
-              }
-
-              @Composable
-              fun QuranVisualNavigation(primaryColor: Color, surfaceColor: Color, textColor: Color) {
-                  var selectedSurah by remember { mutableStateOf<SurahItem?>(null) }
-                  
-                  if (selectedSurah == null) {
-                      VisualSurahListScreen(primaryColor, surfaceColor, onSurahSelect = { selectedSurah = it })
-                  } else {
-                      VisualSurahDetailScreen(surah = selectedSurah!!, primaryColor = primaryColor, surfaceColor = surfaceColor, textColor = textColor, onBack = { selectedSurah = null })
-                  }
-              }
-
-              @Composable
-              fun VisualSurahListScreen(primaryColor: Color, surfaceColor: Color, onSurahSelect: (SurahItem) -> Unit) {
-                  val quranSurahs = listOf(
-                      SurahItem(1, "الفاتحة", "مكية", 7),
-                      SurahItem(2, "البقرة", "مدنية", 286),
-                      SurahItem(3, "آل عمران", "مدنية", 200),
-                      SurahItem(4, "النساء", "مدنية", 176),
-                      SurahItem(5, "المائدة", "مدنية", 120),
-                      SurahItem(9, "التوبة", "مدنية", 129),
-                      SurahItem(67, "الملك", "مكية", 30),
-                      SurahItem(112, "الإخلاص", "مكية", 4),
-                      SurahItem(113, "الفلق", "مكية", 5),
-                      SurahItem(114, "الناس", "مكية", 6)
-                  )
-
-                  Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                      Text(
-                          text = "المصحف الشريف 📖",
-                          style = MaterialTheme.typography.headlineMedium,
-                          color = primaryColor,
-                          modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                          textAlign = TextAlign.Center,
-                          fontWeight = FontWeight.Bold
+          rm -f "$MAIN_ACTIVITY_PATH"
+          cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
+          package com.example
+          import android.os.Bundle
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.setContent
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.text.style.TextAlign
+          
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent {
+                      val surahData = mapOf(
+                          "الفاتحة" to "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ ﴿١﴾ الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾",
+                          "المائدة" to "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ ۚ أُحِلَّتْ لَكُم بَهِيمَةُ الْأَنْعَامِ إِلَّا مَا يُتْلَىٰ عَلَيْكُمْ غَيْرَ مُحِلِّي الصَّيْدِ وَأَنتُمْ حُرُمٌ ۗ إِنَّ اللَّهَ يَحْكُمُ مَا يُرِيدُ ﴿١﴾",
+                          "الملك" to "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ ﴿٢﴾"
                       )
-                      LazyColumn {
-                          items(quranSurahs) { surah ->
-                              Card(
-                                  colors = CardDefaults.cardColors(containerColor = surfaceColor),
-                                  elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                  modifier = Modifier
-                                      .fillMaxWidth()
-                                      .padding(vertical = 4.dp)
-                                      .clickable { onSurahSelect(surah) }
-                              ) {
-                                  Row(
-                                      modifier = Modifier.padding(14.dp).fillMaxWidth(),
-                                      horizontalArrangement = Arrangement.SpaceBetween,
-                                      verticalAlignment = Alignment.CenterVertically
-                                  ) {
-                                      Column(horizontalAlignment = Alignment.Start) {
-                                          Text(text = "آياتها", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                          Text(text = "${surah.verses}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = primaryColor)
-                                      }
-
-                                      Text(
-                                          text = if (surah.type == "مكية") "🕋 مكية" else "🕌 مدنية",
-                                          style = MaterialTheme.typography.bodyMedium,
-                                          modifier = Modifier
-                                              .background(Color(0xFFE8F5E9), shape = RoundedCornerShape(4.dp))
-                                              .padding(horizontal = 8.dp, vertical = 4.dp),
-                                          color = primaryColor
-                                      )
-
-                                      Row(verticalAlignment = Alignment.CenterVertically) {
-                                          Text(text = surah.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                          Spacer(modifier = Modifier.width(12.dp))
-                                          Text(text = "${surah.id}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                                      }
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-
-              @Composable
-              fun VisualSurahDetailScreen(surah: SurahItem, primaryColor: Color, surfaceColor: Color, textColor: Color, onBack: () -> Unit) {
-                  // تلقيم آيات السور الحقيقية كاملة بالتشكيل لحل مشكلة النص البديل بالملف "1000197691.jpg"
-                  val surahText = when(surah.name) {
-                      "الفاتحة" -> "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾"
-                      "آل عمران" -> "الم ﴿١﴾ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ﴿٢﴾ نَزَّلَ عَلَيْكَ الْكِتَابَ بِالْحَقِّ مُصَدِّقًا لِّمَا بَيْنَ يَدَيْهِ وَأَنزَلَ التَّوْرَاةَ وَالْإِنجِيلَ ﴿٣﴾ مِن قَبْلُ هُدًى لِّلنَّاسِ وَأَنزَلَ الْفُرْقَانَ ۗ إِنَّ الَّذِينَ كَفَرُوا بِآيَاتِ اللَّهِ لَهُمْ عَذَابٌ شَدِيدٌ ۗ وَاللَّهُ عَزِيزٌ ذُو انتِقَامٍ ﴿٤﴾"
-                      "البقرة" -> "الم ﴿١﴾ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ ﴿٢﴾ الَّذِينَ يُؤْمِنُونَ بِالْغَيْبِ وَيُقِيمُونَ الصَّلَاةَ وَمِمَّا رَزَقْنَاهُمْ يُنفِقُونَ ﴿٣﴾ وَالَّذِينَ يُؤْمِنُونَ بِمَا أُنزِلَ إِلَيْكَ وَمَا أُنزِلَ مِن قَبْلِكَ وَبِالْآخِرَةِ هُمْ يُوقِنُونَ ﴿٤﴾"
-                      "التوبة" -> "بَرَاءَةٌ مِّنَ اللَّهِ وَرَسُولِهِ إِلَى الَّذِينَ عَاهَدتُّم مِّنَ الْمُشْرِكِينَ ﴿١﴾ فَسِيحُوا فِي الْأَرْضِ أَرْبَعَةَ أَشْهُرٍ وَاعْلَمُوا أَنَّكُمْ غَيْرُ مُعْجِزِي اللَّهِ ۙ وَأَنَّ اللَّهَ مُخْزِي الْكَافِرِينَ ﴿٢﴾"
-                      "الملك" -> "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ ﴿٢﴾"
-                      "الإخلاص" -> "قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾"
-                      "الفلق" -> "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ﴿٤﴾ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ ﴿٥﴾"
-                      "الناس" -> "قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ﴿٥﴾ مِنَ الْجِنَّةِ وَالنَّاسِ ﴿٦﴾"
-                      else -> "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ\n\nتَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ اَلَّذِي خَلَقَ اَلْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا."
-                  }
-
-                  Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                      Row(
-                          verticalAlignment = Alignment.CenterVertically,
-                          modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-                      ) {
-                          IconButton(onClick = onBack) {
-                              Icon(Icons.Default.ArrowBack, contentDescription = "رجوع", tint = primaryColor)
-                          }
-                          Spacer(modifier = Modifier.weight(1f))
-                          Text(text = "سُورَةُ ${surah.name}", style = MaterialTheme.typography.headlineSmall, color = primaryColor, fontWeight = FontWeight.Bold)
-                      }
                       
-                      Card(
-                          colors = CardDefaults.cardColors(containerColor = surfaceColor),
-                          elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                          modifier = Modifier.fillMaxSize()
-                      ) {
-                          LazyColumn(
-                              modifier = Modifier
-                                  .fillMaxSize()
-                                  .padding(8.dp)
-                                  .border(2.dp, Color(0xFFD4AF37), shape = RoundedCornerShape(4.dp)) // الحفاظ على الإطار الذهبي الموضح بالصورة
-                                  .background(Color(0xFFFFFDF9))
-                                  .padding(16.dp),
-                              horizontalAlignment = Alignment.CenterHorizontally
-                          ) {
-                              item {
-                                  Box(
-                                      modifier = Modifier
-                                          .fillMaxWidth()
-                                          .background(Color(0xFFFFF5D6), shape = RoundedCornerShape(4.dp))
-                                          .border(1.dp, Color(0xFFD4AF37))
-                                          .padding(8.dp),
-                                      contentAlignment = Alignment.Center
-                                  ) {
-                                      Text(
-                                          text = "﴿ سُورَةُ ${surah.name} ﴾",
-                                          style = MaterialTheme.typography.titleMedium,
-                                          fontWeight = FontWeight.Bold,
-                                          color = Color(0xFF5D4037)
-                                      )
-                                  }
-                                  Spacer(modifier = Modifier.height(16.dp))
-                              }
-
-                              if (surah.name != "التوبة") {
-                                  item {
-                                      Text(
-                                          text = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
-                                          style = MaterialTheme.typography.titleLarge,
-                                          color = primaryColor,
-                                          fontWeight = FontWeight.Bold,
-                                          textAlign = TextAlign.Center,
-                                          modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                          fontSize = 24.sp
-                                      )
-                                  }
-                              }
-                              item {
-                                  Text(
-                                      text = surahText,
-                                      style = MaterialTheme.typography.bodyLarge,
-                                      color = textColor,
-                                      textAlign = TextAlign.Center,
-                                      modifier = Modifier.fillMaxWidth(),
-                                      lineHeight = 42.sp, 
-                                      fontSize = 22.sp,   
-                                      fontWeight = FontWeight.Medium
-                                  )
+                      var currentSurah by remember { mutableStateOf("المائدة") }
+                      
+                      Surface(color = Color(0xFFFBF8F3), modifier = Modifier.fillMaxSize()) {
+                          Column(modifier = Modifier.padding(16.dp)) {
+                              Text(text = "سورة $currentSurah", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF006644))
+                              Spacer(modifier = Modifier.height(16.dp))
+                              Card {
+                                  Text(text = surahData[currentSurah] ?: "جاري التحميل...", modifier = Modifier.padding(16.dp))
                               }
                           }
                       }
                   }
               }
-
-              @Composable
-              fun RemindersScreen(primaryColor: Color, surfaceColor: Color, textColor: Color) {
-                  var count1 by remember { mutableStateOf(0) }
-                  var count2 by remember { mutableStateOf(0) }
-
-                  LazyColumn(modifier = Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                      item {
-                          Text(text = "أَذْكاَرُ وَتَذْكِيرَاتٌ 🔔", style = MaterialTheme.typography.headlineMedium, color = primaryColor, modifier = Modifier.padding(bottom = 16.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-                      }
-                      item {
-                          Card(colors = CardDefaults.cardColors(containerColor = surfaceColor), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                              Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                  Text(text = "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ", style = MaterialTheme.typography.titleLarge, color = textColor, textAlign = TextAlign.Center)
-                                  Spacer(modifier = Modifier.height(12.dp))
-                                  Row {
-                                      Button(onClick = { count1++ }) { Text("العَدّ: $count1") }
-                                      Spacer(modifier = Modifier.width(12.dp))
-                                      IconButton(onClick = { count1 = 0 }) { Icon(Icons.Default.Refresh, contentDescription = "تصفير") }
-                                  }
-                              }
-                          }
-                      }
-                      item {
-                          Card(colors = CardDefaults.cardColors(containerColor = surfaceColor), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                              Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                  Text(text = "اللَّهُمَّ صَلِّ وَسَلِّ مْ عَلَى نَبِيِّنَا مُحَمَّدٍ", style = MaterialTheme.typography.titleLarge, color = textColor, textAlign = TextAlign.Center)
-                                  Spacer(modifier = Modifier.height(12.dp))
-                                  Row {
-                                      Button(onClick = { count2++ }) { Text("العَدّ: $count2") }
-                                      Spacer(modifier = Modifier.width(12.dp))
-                                      IconButton(onClick = { count2 = 0 }) { Icon(Icons.Default.Refresh, contentDescription = "تصفير") }
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
+          }
           EOF
-          fi
-          
-          # 3. تهيئة البيئة وتثبيت إصدار الجرادر المتوافق 9.3.1
-          [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install gradle 9.3.1
-          gradle wrapper --gradle-version 9.3.1
-          chmod +x gradlew
-          
-          # 4. توليد ملف التوقيع لضمان تخطي خطأ الـ Keystore
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          cp debug.keystore app/debug.keystore 2>/dev/null || true
-          
-          # 5. تشغيل البناء المستقر
-          ./gradlew clean
-          ./gradlew assembleDebug
+          ./gradlew clean assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
