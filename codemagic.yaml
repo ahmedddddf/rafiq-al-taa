@@ -3,29 +3,58 @@ workflows:
     name: Android APK Build
     max_build_duration: 60
     instance_type: mac_mini_m1
-    environment:
-      vars:
-        JAVA_VERSION: "17"
     scripts:
-      - name: Build Original Base App
+      - name: Build Rafiq Al-Taa Full Worship Tracker
         script: |
-          # 1. فك ضغط المشروع الأصلي كما هو
-          unzip -o "rafiq.zip" -d extracted_project
-          cd extracted_project
-          if [ -d "rafiq" ]; then cd rafiq; fi
+          mkdir -p app/src/main/java/com/example
+          cat << 'EOF' > app/src/main/java/com/example/MainActivity.kt
+          package com.example
+          import android.os.Bundle
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.setContent
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.material.icons.Icons
+          import androidx.compose.material.icons.filled.CheckCircle
           
-          # 2. تهيئة بيئة الجرادر والتصاريح الأساسية
-          [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install gradle 9.3.1
-          gradle wrapper --gradle-version 9.3.1
-          chmod +x gradlew
-          
-          # 3. تخطي خطأ التوقيع والـ Keystore
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          cp debug.keystore app/debug.keystore 2>/dev/null || true
-          
-          # 4. تشغيل بناء التطبيق الأصلي النظيف
-          ./gradlew clean
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent {
+                      val primary = Color(0xFF006644)
+                      Surface(color = Color(0xFFFBF8F3), modifier = Modifier.fillMaxSize()) {
+                          Column(modifier = Modifier.padding(16.dp)) {
+                              Text("سجل العبادات اليومي", style = MaterialTheme.typography.headlineMedium, color = primary)
+                              Spacer(modifier = Modifier.height(16.dp))
+                              
+                              val tasks = listOf("الصلاة في وقتها", "قراءة ورد القرآن", "أذكار الصباح والمساء", "الصدقة", "الاستغفار")
+                              tasks.forEach { task ->
+                                  var checked by remember { mutableStateOf(false) }
+                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                      Row(modifier = Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                          Checkbox(checked = checked, onCheckedChange = { checked = it })
+                                          Text(task, modifier = Modifier.padding(start = 8.dp))
+                                          if(checked) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = primary, modifier = Modifier.padding(start = 8.dp))
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+          # إعدادات Gradle الأصلية المستقرة
+          cat << 'EOF' > build.gradle
+          buildscript { repositories { google(); mavenCentral() } }
+          plugins { id 'com.android.application' version '8.2.2' apply false; id 'org.jetbrains.kotlin.android' version '1.9.22' apply false }
+          EOF
+          # بناء المشروع
           ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
