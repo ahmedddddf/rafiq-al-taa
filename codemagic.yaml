@@ -7,135 +7,24 @@ workflows:
       vars:
         JAVA_VERSION: "17"
     scripts:
-      - name: Build with Accurate Quran Database
+      - name: Build Original Stable App
         script: |
-          # 1. فك ضغط ملف المشروع
+          # 1. فك ضغط ملف المشروع الأصلي
           unzip -o "rafiq.zip" -d extracted_project
           cd extracted_project
+          if [ -d "rafiq" ]; then cd rafiq; fi
           
-          # الدخول للمجلد الداخلي للـ zip
-          if [ -d "rafiq" ]; then
-              cd rafiq
-          fi
-          
-          # 2. بناء ملف MainActivity متكامل يحتوي على نصوص دقيقة ومحددة للسور (الفاتحة، المائدة، والملك)
-          MAIN_ACTIVITY_PATH=$(find . -name "MainActivity.kt" | head -n 1)
-          if [ -n "$MAIN_ACTIVITY_PATH" ]; then
-              echo "جاري بناء MainActivity.kt وقاعدة البيانات الدقيقة..."
-              rm -f "$MAIN_ACTIVITY_PATH"
-              cat << 'EOF' > "$MAIN_ACTIVITY_PATH"
-              package com.example
-
-              import android.os.Bundle
-              import androidx.activity.ComponentActivity
-              import androidx.activity.compose.setContent
-              import androidx.compose.foundation.background
-              import androidx.compose.foundation.border
-              import androidx.compose.foundation.clickable
-              import androidx.compose.foundation.layout.*
-              import androidx.compose.foundation.lazy.LazyColumn
-              import androidx.compose.foundation.lazy.items
-              import androidx.compose.foundation.shape.RoundedCornerShape
-              import androidx.compose.material.icons.Icons
-              import androidx.compose.material.icons.filled.ArrowBack
-              import androidx.compose.material3.*
-              import androidx.compose.runtime.*
-              import androidx.compose.ui.Modifier
-              import androidx.compose.ui.graphics.Color
-              import androidx.compose.ui.unit.dp
-              import androidx.compose.ui.unit.sp
-              import androidx.compose.ui.Alignment
-              import androidx.compose.ui.text.font.FontWeight
-              import androidx.compose.ui.text.style.TextAlign
-
-              data class SurahItem(val name: String, val id: Int)
-
-              class MainActivity : ComponentActivity() {
-                  override fun onCreate(savedInstanceState: Bundle?) {
-                      super.onCreate(savedInstanceState)
-                      setContent {
-                          val customPrimary = Color(0xFF006644)
-                          val customBackground = Color(0xFFFBF8F3)
-                          val customSurface = Color(0xFFFFFFFF)
-                          val customText = Color(0xFF2C3E50)
-
-                          val surahData = mapOf(
-                              "الفاتحة" to "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾",
-                              "المائدة" to "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ ۚ أُحِلَّتْ لَكُم بَهِيمَةُ الْأَنْعَامِ إِلَّا مَا يُتْلَىٰ عَلَيْكُمْ غَيْرَ مُحِلِّي الصَّيْدِ وَأَنتُمْ حُرُمٌ ۗ إِنَّ اللَّهَ يَحْكُمُ مَا يُرِيدُ ﴿١﴾ يَا أَيُّهَا الَّذِينَ آمَنُوا لَا تُحِلُّوا شَعَائِرَ اللَّهِ وَلَا الشَّهْرَ الْحَرَامَ وَلَا الْهَدْيَ وَلَا الْقَلَائِدَ ﴿٢﴾",
-                              "الملك" to "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ ﴿٢﴾ الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا ۖ مَّا تَرَىٰ فِي خَلْقِ الرَّحْمَٰنِ مِن تَفَاوُتٍ ۖ فَارْجِعِ الْبَصَرَ هَلْ تَرَىٰ مِن فُطُورٍ ﴿٣﴾"
-                          )
-
-                          val surahList = listOf(
-                              SurahItem("الفاتحة", 1),
-                              SurahItem("المائدة", 5),
-                              SurahItem("الملك", 67)
-                          )
-
-                          var selectedSurah by remember { mutableStateOf<String?>(null) }
-
-                          MaterialTheme {
-                              Surface(color = customBackground, modifier = Modifier.fillMaxSize()) {
-                                  if (selectedSurah == null) {
-                                      Column(modifier = Modifier.padding(16.dp)) {
-                                          Text(text = "المصحف الشريف 📖", style = MaterialTheme.typography.headlineMedium, color = customPrimary, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
-                                          LazyColumn {
-                                              items(surahList) { surah ->
-                                                  Card(
-                                                      colors = CardDefaults.cardColors(containerColor = customSurface),
-                                                      modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedSurah = surah.name }
-                                                  ) {
-                                                      Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                          Text(text = "رقم ${surah.id}", color = Color.Gray)
-                                                          Text(text = surah.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                                                      }
-                                                  }
-                                              }
-                                          }
-                                      }
-                                  } else {
-                                      val name = selectedSurah!!
-                                      Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                                          Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                                              IconButton(onClick = { selectedSurah = null }) { Icon(Icons.Default.ArrowBack, contentDescription = "رجوع", tint = customPrimary) }
-                                              Spacer(modifier = Modifier.weight(1f))
-                                              Text(text = "سُورَةُ $name", style = MaterialTheme.typography.headlineSmall, color = customPrimary, fontWeight = FontWeight.Bold)
-                                          }
-                                          Card(colors = CardDefaults.cardColors(containerColor = customSurface), modifier = Modifier.fillMaxSize()) {
-                                              LazyColumn(
-                                                  modifier = Modifier.fillMaxSize().padding(8.dp).border(2.dp, Color(0xFFD4AF37), shape = RoundedCornerShape(4.dp)).background(Color(0xFFFFFDF9)).padding(16.dp),
-                                                  horizontalAlignment = Alignment.CenterHorizontally
-                                              ) {
-                                                  item {
-                                                      Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFFFF5D6), shape = RoundedCornerShape(4.dp)).border(1.dp, Color(0xFFD4AF37)).padding(8.dp), contentAlignment = Alignment.Center) {
-                                                          Text(text = "﴿ سُورَةُ $name ﴾", fontWeight = FontWeight.Bold, color = Color(0xFF5D4037))
-                                                      }
-                                                      Spacer(modifier = Modifier.height(16.dp))
-                                                      Text(text = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ", style = MaterialTheme.typography.titleLarge, color = customPrimary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), fontSize = 24.sp)
-                                                      Text(text = surahData[name] ?: "", style = MaterialTheme.typography.bodyLarge, color = customText, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), lineHeight = 42.sp, fontSize = 22.sp)
-                                                  }
-                                              }
-                                          }
-                                      }
-                                  }
-                              }
-                          }
-                      }
-                  }
-              }
-          EOF
-          fi
-          
-          # 3. خطوة الإصلاح الحاسمة: توليد وتأمين ملف الـ gradlew المفقود بالسيرفر
+          # 2. تهيئة البيئة وتثبيت إصدار الجرادر المتوافق لملفاتك الأصلية
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install gradle 9.3.1
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
-          # 4. توليد ملف التوقيع وتخطي الـ Keystore
+          # 3. توليد ملف التوقيع لضمان تخطي خطأ الـ Keystore
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 5. تشغيل البناء الصافي والآمن للنسخة الصحيحة
+          # 4. تشغيل البناء النظيف للمشروع السابق
           ./gradlew clean
           ./gradlew assembleDebug
     artifacts:
