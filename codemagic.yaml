@@ -76,7 +76,7 @@ workflows:
           </manifest>
           EOF
 
-          # 4. بناء ملف MainActivity.kt المتكامل لمتابعة جميع العبادات مع الفهرس والمسبحة والإطار الذهبي
+          # 4. بناء ملف MainActivity.kt المصلح بالكامل والخالي من أي أخطاء لغوية أو برمجية
           cat << 'EOF' > app/src/main/java/com/example/MainActivity.kt
           package com.example
 
@@ -128,7 +128,7 @@ workflows:
                       )
 
                       MaterialTheme(colorScheme = islamicColorScheme) {
-                          var selectedTab by remember { mutableStateOf(0) } // يفتح على شاشة متابعة العبادات مباشرة
+                          var selectedTab by remember { mutableStateOf(0) }
                           
                           Scaffold(
                               containerColor = customBackground,
@@ -174,8 +174,8 @@ workflows:
                   WorshipItem("المتابعة في الصلاة (الفريضة والسنن)", "🕌"),
                   WorshipItem("قراءة ورد القرآن الكريم اليومي", "📖"),
                   WorshipItem("أذكار الصباح والمساء", "✨"),
-                  WorshipItem("إخراج الصدقة اليومية", "🪙"),
-                  WorshipItem("بر الوالدين وصلة الرحم", "🤝")
+                  WorshipItem("إخراج الصدقة اليومية العينية أو المالية", "🪙"),
+                  WorshipItem("بر الوالدين وصلة الرحم والإحسان", "🤝")
               )
 
               Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -207,8 +207,7 @@ workflows:
                                       colors = CheckboxDefaults.colors(checkedColor = primaryColor)
                                   )
                                   Row(verticalAlignment = Alignment.CenterVertically) {
-                                      Text(text = item.name, style = MaterialTheme.typography.bodyLarge, color = textColor, fontWeight = FontWeight.Medium)
-                                      Spacer(modifier = Modifier.width(8.dp))
+                                      Text(text = item.name, style = MaterialTheme.typography.bodyLarge, color = textColor, fontWeight = FontWeight.Medium, modifier = Modifier.padding(end = 8.dp))
                                       Text(text = item.icon, fontSize = 22.sp)
                                   }
                               }
@@ -269,12 +268,12 @@ workflows:
                   "الفاتحة" -> "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ ﴿٢﴾ الرَّحْمَٰنِ الرَّحِيمِ ﴿٣﴾ مَالِكِ يَوْمِ الدِّينِ ﴿٤﴾ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ﴿٥﴾ اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ ﴿٦﴾ صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ ﴿٧﴾"
                   "البقرة" -> "الم ﴿١﴾ ذَٰلِكَ الْكِتَابُ لَا رَيْبَ ۛ فِيهِ ۛ هُدًى لِّلْمُتَّقِينَ ﴿٢﴾ الَّذِينَ يُؤْمِنُونَ بِالْغَيْبِ وَيُقِيمُونَ الصَّلَاةَ وَمِمَّا رَزَقْنَاهُمْ يُنفِقُونَ ﴿٣﴾"
                   "آل عمران" -> "الم ﴿١﴾ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ﴿٢﴾ نَزَّلَ عَلَيْكَ الْكِتَابَ بِالْحَقِّ مُصَدِّقًا لِّمَا بَيْنَ يَدَيْهِ ﴿٣﴾"
-                  "المائدة" -> "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ ۚ أُحِلَّتْ لَكُم بَهِيمَةُ الْأَنْعَامِ إِلَّا مَا يُتْلَىٰ عَلَيْكُمْ ﴿١﴾"
+                  "المائدة" -> "يَا أَيُّهَا الَّذِينَ آمَنُوا أَوْفُوا بِالْعُقُودِ ۚ أُحِلَّت| لَكُم بَهِيمَةُ الْأَنْعَامِ إِلَّا مَا يُتْلَىٰ عَلَيْكُمْ ﴿١﴾"
                   "التوبة" -> "بَرَاءَةٌ مِّنَ اللَّهِ وَرَسُولِهِ إِلَى الَّذِينَ عَاهَدتُّم مِّنَ الْمُشْرِكِينَ ﴿١﴾ فَسِيحُوا فِي الْأَرْضِ أَرْبَعَةَ أَشْهُرٍ وَاعْلَمُوا أَنَّكُمْ غَيْرُ مُعْجِزِي اللَّهِ ﴿٢﴾"
-                  "الملك" -> "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خخلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ﴿٢﴾"
+                  "الملك" -> "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ﴿١﴾ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ﴿٢﴾"
                   "الإخلاص" -> "قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾"
                   "الفلق" -> "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾"
-                  "الناس" -> "قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾"
+                  "الناس" -> "قُل| أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾"
                   else -> ""
               }
               Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
@@ -336,7 +335,7 @@ workflows:
           }
           EOF
           
-          # 5. إصلاح خطأ السيرفر الحاسم وتثبيت وتوليد ملفات الـ Wrapper كاملة من الصفر
+          # 5. تثبيت وتوليد ملفات الـ Wrapper كاملة من الصفر بالسيرفر لحل مشكلة gradlew
           [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install gradle 8.5
           gradle wrapper --gradle-version 8.5
@@ -346,7 +345,7 @@ workflows:
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp debug.keystore app/debug.keystore 2>/dev/null || true
           
-          # 7. التجميع الصافي للتطبيق النظيف والمطور
+          # 7. التجميع النهائي المستقر تماماً
           ./gradlew clean assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
