@@ -7,45 +7,36 @@ workflows:
       - name: Build Ultralight Native App
         script: |
           rm -rf *
+          # 1. إعداد هيكل المشروع
           mkdir -p app/src/main/java/com/example/rafiq
-          mkdir -p app/src/main/res/layout
           
-          # 1. إعداد Gradle خفيف
+          # 2. إنشاء build.gradle الأساسي
           cat << 'EOF' > build.gradle
-          buildscript { repositories { google(); mavenCentral() } }
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
+          }
           allprojects { repositories { google(); mavenCentral() } }
           EOF
           
-          # 2. إعداد app/build.gradle بدون مكتبات ثقيلة
+          cat << 'EOF' > settings.gradle
+          include ':app'
+          EOF
+          
           cat << 'EOF' > app/build.gradle
           plugins { id 'com.android.application' }
           android {
               namespace 'com.example.rafiq'
               compileSdk 34
-              defaultConfig { applicationId "com.example.rafiq"; minSdk 21; targetSdk 34; versionCode 1; versionName "1.0" }
+              defaultConfig { applicationId "com.example.rafiq"; minSdk 21; targetSdk 34 }
           }
           EOF
           
-          # 3. إعداد MainActivity خفيف جداً
-          cat << 'EOF' > app/src/main/java/com/example/rafiq/MainActivity.java
-          package com.example.rafiq;
-          import android.app.Activity;
-          import android.os.Bundle;
-          import android.widget.TextView;
-          public class MainActivity extends Activity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  TextView tv = new TextView(this);
-                  tv.setText("رفيق الطاعة - النسخة الخفيفة");
-                  tv.setGravity(17);
-                  setContentView(tv);
-              }
-          }
-          EOF
-          
-          # 4. بناء سريع
+          # 3. توليد ملف gradlew وتهيئته
+          gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          
+          # 4. بناء التطبيق
+          ./gradlew assembleDebug
     artifacts:
       - "**/build/outputs/apk/**/*.apk"
